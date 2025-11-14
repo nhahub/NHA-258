@@ -144,7 +144,7 @@ namespace SmartTransportation.BLL.Services
                     {
                         UserName = payload.Name.Replace(" ", ""),
                         Email = payload.Email,
-                        PasswordHash = BC.HashPassword(Guid.NewGuid().ToString()), // Random password for Google users
+                        PasswordHash = BC.HashPassword(Guid.NewGuid().ToString()), 
                         UserTypeId = 3, // Passenger role
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
