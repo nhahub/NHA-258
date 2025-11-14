@@ -1,0 +1,8 @@
+bin/
+obj/
+.vs/
+*.user
+.idea/
+node_modules/
+appsettings.json
+.env
