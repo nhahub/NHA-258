@@ -1,0 +1,393 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CrossBorder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Apple Color Emoji','Segoe UI Emoji';
+        }
+
+        .popover {
+            box-shadow: 0 10px 15px rgba(0,0,0,.08), 0 4px 6px rgba(0,0,0,.05);
+        }
+
+        .search-suggestions {
+            box-shadow: 0 10px 15px rgba(0,0,0,.1), 0 4px 6px rgba(0,0,0,.05);
+            max-height: 60vh; /* Use viewport height for better responsiveness */
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+            /* Custom scrollbar styling */
+            .search-suggestions::-webkit-scrollbar {
+                width: 10px;
+            }
+
+            .search-suggestions::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 0 8px 8px 0;
+            }
+
+            .search-suggestions::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 5px;
+            }
+
+                .search-suggestions::-webkit-scrollbar-thumb:hover {
+                    background: #a1a1a1;
+                }
+
+        .suggestion-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .highlight {
+            background-color: #fef3c7;
+            font-weight: 500;
+        }
+    </style>
+    @RenderSection("Head", required: false)
+</head>
+<body class="bg-white">
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div class="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <div class="text-xl font-bold text-gray-900">Cross Border</div>
+                <div class="text-sm text-gray-500" id="page-context">Feed</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <!-- LUCENE-POWERED SEARCH -->
+                <div class="relative" id="search-container">
+                    <div class="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg bg-white min-w-[320px]">
+                        <span class="text-sm text-gray-400">🔍</span>
+                        <input id="search-input"
+                               class="search-input flex-1 border-none outline-none bg-transparent text-sm text-gray-900 placeholder:text-gray-400"
+                               placeholder="Search..."
+                               autocomplete="off" />
+                        <span class="px-1.5 py-0.5 bg-gray-100 rounded text-xs text-gray-600">↵</span>
+                    </div>
+
+                    <!-- SUGGESTIONS DROPDOWN - MADE SCROLLABLE -->
+                    <div id="search-suggestions"
+                         class="search-suggestions hidden absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg z-50">
+                        <div id="suggestions-content"></div>
+                    </div>
+                </div>
+
+                <div class="w-10 h-10 rounded-full overflow-hidden">
+                    <img src="https://i.pravatar.cc/80" alt="User" class="w-full h-full object-cover" />
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="max-w-[1400px] mx-auto px-6 pt-8">
+        <div class="md:grid md:grid-cols-[240px_1fr] md:gap-7">
+            <!-- SIDEBAR -->
+            <aside class="mb-8 md:mb-0">
+                <div class="md:fixed md:w-[240px] md:h-[calc(100vh-5rem)] md:overflow-y-auto">
+                    <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Pages</div>
+                    <nav class="flex flex-col gap-1">
+                         <a asp-page="/UserProfile" class="block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                            User Profile
+                        </a>
+                        <a asp-page="/Countries" class="block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                            Country Profiles
+                        </a>
+                        <a asp-page="/ProductCategories" class="block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                            Product Categories
+                        </a>
+                        <a href="/Following" class="block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                            Following
+                        </a>
+                        <a asp-page="/Index" class="sidebar-link block px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                            Feed
+                      </a>
+                    </nav>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main role="main" class="pb-6 min-w-0">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script type="module" src='https://cdn.jsdelivr.net/npm/@@starfederation/datastar/dist/datastar.js'></script>
+
+    <!-- ACTIVE LINK HIGHLIGHTING -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const currentPath = window.location.pathname.toLowerCase();
+            const links = document.querySelectorAll('aside nav a');
+
+            links.forEach(link => {
+                const aspPage = link.getAttribute('asp-page');
+                const href = link.getAttribute('href');
+
+                let isActive = false;
+
+                if (aspPage) {
+                    const pagePath = aspPage.toLowerCase();
+                    isActive = currentPath === pagePath ||
+                        currentPath === pagePath + '.cshtml' ||
+                        currentPath.endsWith(pagePath);
+                } else if (href && href !== '#') {
+                    isActive = currentPath === href.toLowerCase();
+                }
+
+                if (isActive) {
+                    link.classList.remove('text-gray-700');
+                    link.classList.add('bg-gray-100', 'text-gray-900', 'font-medium');
+                }
+            });
+        });
+    </script>
+
+    <!-- LUCENE-POWERED SMART SEARCH -->
+    <script>
+        (function () {
+            const searchInput = document.getElementById('search-input');
+            const suggestionsContainer = document.getElementById('search-suggestions');
+            const suggestionsContent = document.getElementById('suggestions-content');
+            const pageContext = document.getElementById('page-context');
+
+            let currentPage = 'feed';
+            let debounceTimer = null;
+            let currentRequest = null;
+
+            // Detect current page
+            function detectPage() {
+                const path = window.location.pathname.toLowerCase();
+
+                if (path.includes('countries') || path.includes('countryprofile')) {
+                    currentPage = 'country';
+                    pageContext.textContent = 'Countries';
+                    searchInput.placeholder = 'Search countries (try: united, asia, europe...)';
+                } else if (path.includes('product')) {
+                    currentPage = 'product';
+                    pageContext.textContent = 'Products';
+                    searchInput.placeholder = 'Search products (try: iron, machinery, textiles...)';
+                } else {
+                    currentPage = 'article';
+                    pageContext.textContent = 'Feed';
+                    searchInput.placeholder = 'Search articles (try: trade, export, agreement...)';
+                }
+
+                console.log('Page detected:', currentPage);
+            }
+
+            // Get search suggestions from Lucene API
+            async function getSuggestions(query) {
+                if (!query || query.length < 2) {
+                    suggestionsContainer.classList.add('hidden');
+                    return;
+                }
+
+                // Cancel previous request
+                if (currentRequest) {
+                    currentRequest.abort();
+                }
+
+                try {
+                    currentRequest = new AbortController();
+
+                    const response = await fetch(
+                        `/api/search/suggestions?q=${encodeURIComponent(query)}&type=${currentPage}`,
+                        { signal: currentRequest.signal }
+                    );
+
+                    if (!response.ok) throw new Error('Search failed');
+
+                    const data = await response.json();
+                    displaySuggestions(data.results, query);
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error('Search error:', error);
+                        suggestionsContent.innerHTML = `
+                                <div class="px-4 py-3 text-sm text-red-500">
+                                    Search error. Please try again.
+                                </div>
+                            `;
+                        suggestionsContainer.classList.remove('hidden');
+                    }
+                }
+            }
+
+            // Display suggestions
+            function displaySuggestions(results, query) {
+                if (!results || results.length === 0) {
+                    suggestionsContent.innerHTML = `
+                            <div class="px-4 py-3 text-sm text-gray-500">
+                                No results found for "${escapeHtml(query)}"
+                            </div>
+                        `;
+                    suggestionsContainer.classList.remove('hidden');
+                    return;
+                }
+
+                const html = results.map(result => {
+                    const icon = getTypeIcon(result.type);
+                    const badge = getTypeBadge(result.type, result.metadata);
+
+                    return `
+                            <div class="suggestion-item px-4 py-3 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                 onclick="navigateToResult('${escapeHtml(result.url)}')">
+                                <div class="flex items-start gap-3">
+                                    <span class="text-xl flex-shrink-0">${icon}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-medium text-gray-900 truncate">
+                                            ${highlightMatch(result.title, query)}
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-0.5">
+                                            ${badge} ${escapeHtml(result.description || '')}
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-1">
+                                            Click to view details →
+                                        </div>
+                                    </div>
+                                    <div class="text-xs text-gray-400 flex-shrink-0">
+                                        ${Math.round(result.score * 100)}%
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                }).join('');
+
+                suggestionsContent.innerHTML = html;
+                suggestionsContainer.classList.remove('hidden');
+            }
+
+            // Navigate to result detail page
+            window.navigateToResult = function (url) {
+                if (url) {
+                    window.location.href = url;
+                }
+            };
+
+            // Get icon for result type
+            function getTypeIcon(type) {
+                switch (type) {
+                    case 'country': return '🌍';
+                    case 'product': return '📦';
+                    case 'article': return '📰';
+                    default: return '📄';
+                }
+            }
+
+            // Get badge for result type
+            function getTypeBadge(type, metadata) {
+                switch (type) {
+                    case 'country':
+                        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                ${metadata.code || 'Country'}
+                            </span>`;
+                    case 'product':
+                        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                HS-${metadata.code || metadata.chapter || ''}
+                            </span>`;
+                    case 'article':
+                        return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                ${metadata.date || 'Article'}
+                            </span>`;
+                    default:
+                        return '';
+                }
+            }
+
+            // Highlight matching text
+            function highlightMatch(text, query) {
+                if (!text) return '';
+
+                const words = query.toLowerCase().split(' ').filter(w => w.length > 0);
+                let result = escapeHtml(text);
+
+                words.forEach(word => {
+                    const regex = new RegExp(`(${escapeRegex(word)})`, 'gi');
+                    result = result.replace(regex, '<span class="highlight">$1</span>');
+                });
+
+                return result;
+            }
+
+            // Escape HTML
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            // Escape regex special characters
+            function escapeRegex(str) {
+                return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            // Handle input with debounce
+            searchInput.addEventListener('input', function (e) {
+                const query = e.target.value.trim();
+
+                clearTimeout(debounceTimer);
+
+                if (query.length < 2) {
+                    suggestionsContainer.classList.add('hidden');
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    getSuggestions(query);
+                }, 300);
+            });
+
+            // Handle Enter key
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const query = searchInput.value.trim();
+
+                    if (query) {
+                        const searchPage = currentPage === 'country' ? '/Countries' :
+                            currentPage === 'product' ? '/ProductCategories' :
+                                '/Index';
+                        window.location.href = `${searchPage}?search=${encodeURIComponent(query)}`;
+                    }
+                }
+
+                if (e.key === 'Escape') {
+                    suggestionsContainer.classList.add('hidden');
+                }
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+                    suggestionsContainer.classList.add('hidden');
+                }
+            });
+
+            // Show suggestions when focusing (if there's text)
+            searchInput.addEventListener('focus', function () {
+                if (searchInput.value.trim().length >= 2) {
+                    getSuggestions(searchInput.value.trim());
+                }
+            });
+
+            // Initialize
+            detectPage();
+        })();
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

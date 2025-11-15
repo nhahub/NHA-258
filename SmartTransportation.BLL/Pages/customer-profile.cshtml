@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Profile - Move Smart Customer</title>
+  <style>
+    :root {
+      --primary: #5b6fd8;
+      --primary-dark: #4a5ab8;
+      --primary-light: #c8cef5;
+      --primary-bg: #e8eaf9;
+      --white: #ffffff;
+      --black: #000000;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --info: #3b82f6;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--black);
+      text-decoration: none;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow-md);
+    }
+
+    .logo span {
+      font-size: 18px;
+      font-weight: 900;
+      color: white;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .notification-btn {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: none;
+      background: var(--gray-100);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.2s;
+    }
+
+    .notification-btn:hover {
+      background: var(--primary-bg);
+    }
+
+    .notification-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      background: var(--danger);
+      border-radius: 50%;
+      border: 2px solid white;
+    }
+
+    .user-menu {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: var(--gray-100);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .user-menu:hover {
+      background: var(--primary-bg);
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    /* Main Layout */
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 32px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 100px;
+      height: fit-content;
+    }
+
+    .sidebar-nav {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      color: var(--gray-700);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.2s;
+      margin-bottom: 4px;
+    }
+
+    .nav-item:hover {
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+
+    .nav-item.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .nav-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Main Content */
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .page-header {
+      background: white;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--gray-900);
+    }
+
+    .page-subtitle {
+      color: var(--gray-600);
+      font-size: 15px;
+    }
+
+    /* Profile Card */
+    .profile-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .profile-header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      padding: 40px 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .profile-avatar-large {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: white;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 16px;
+      font-size: 48px;
+      font-weight: 800;
+      color: var(--primary);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      position: relative;
+    }
+
+    .avatar-edit-btn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: white;
+      border: 3px solid var(--primary);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.2s;
+    }
+
+    .avatar-edit-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .profile-name {
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .profile-email {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 15px;
+    }
+
+    .loyalty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    .profile-body {
+      padding: 32px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .edit-btn {
+      padding: 8px 16px;
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .edit-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .info-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+    }
+
+    .stat-icon.primary {
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+
+    .stat-icon.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+
+    .stat-icon.warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+
+    .stat-icon.info {
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--info);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gray-900);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--gray-600);
+      font-weight: 500;
+    }
+
+    /* Payment Methods */
+    .payment-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .payment-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .payment-item:hover {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+    }
+
+    .payment-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: var(--gray-100);
+      display: grid;
+      place-items: center;
+      font-size: 32px;
+      flex-shrink: 0;
+    }
+
+    .payment-info {
+      flex: 1;
+    }
+
+    .payment-type {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--gray-900);
+    }
+
+    .payment-details {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .payment-badge {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+
+    .remove-payment {
+      padding: 8px 16px;
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--danger);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .remove-payment:hover {
+      background: var(--danger);
+      color: white;
+    }
+
+    /* Recent Rides */
+    .rides-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .ride-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px;
+      border-bottom: 1px solid var(--gray-200);
+      transition: all 0.2s;
+    }
+
+    .ride-item:last-child {
+      border-bottom: none;
+    }
+
+    .ride-item:hover {
+      background: var(--gray-50);
+    }
+
+    .ride-date {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      background: var(--primary-bg);
+      border-radius: var(--radius);
+      min-width: 70px;
+    }
+
+    .ride-day {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1;
+    }
+
+    .ride-month {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .ride-info {
+      flex: 1;
+    }
+
+    .ride-route {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--gray-900);
+    }
+
+    .ride-details {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    .ride-price {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    /* Saved Addresses */
+    .addresses-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    .address-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 20px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+
+    .address-item:hover {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+    }
+
+    .address-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .address-info {
+      flex: 1;
+    }
+
+    .address-label {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--gray-900);
+    }
+
+    .address-text {
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    .add-btn {
+      width: 100%;
+      padding: 16px;
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--gray-600);
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .add-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-bg);
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+      background: var(--gray-200);
+      color: var(--gray-700);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-300);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .sidebar-nav {
+        display: flex;
+        overflow-x: auto;
+        padding: 12px;
+      }
+
+      .nav-item {
+        white-space: nowrap;
+        margin-bottom: 0;
+        margin-right: 8px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .main-container {
+        padding: 20px 16px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .user-name {
+        display: none;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+
+      .ride-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .payment-item {
+        flex-wrap: wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <a href="move-smart-final.html" class="brand">
+        <div class="logo"><span>MS</span></div>
+        <span>Move Smart</span>
+      </a>
+
+      <div class="header-right">
+        <button class="notification-btn">
+          <span class="notification-badge"></span>
+          🔔
+        </button>
+        <div class="user-menu">
+          <div class="user-avatar">SA</div>
+          <span class="user-name">Sarah Anderson</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active">
+          <span class="nav-icon">👤</span>
+          Profile
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🚕</span>
+          My Rides
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">💳</span>
+          Payment Methods
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">📍</span>
+          Saved Places
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">🎁</span>
+          Rewards
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">⚙️</span>
+          Settings
+        </a>
+        <a href="#" class="nav-item">
+          <span class="nav-icon">❓</span>
+          Help & Support
+        </a>
+        <a href="login.html" class="nav-item">
+          <span class="nav-icon">🚪</span>
+          Logout
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1 class="page-title">My Profile</h1>
+        <p class="page-subtitle">Manage your account, rides, and preferences</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon primary">🚕</div>
+          <div class="stat-value">47</div>
+          <div class="stat-label">Total Rides</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon success">⭐</div>
+          <div class="stat-value">4.9</div>
+          <div class="stat-label">Average Rating</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon warning">💰</div>
+          <div class="stat-value">$847</div>
+          <div class="stat-label">Total Spent</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon info">🎁</div>
+          <div class="stat-value">250</div>
+          <div class="stat-label">Reward Points</div>
+        </div>
+      </div>
+
+      <!-- Profile Information -->
+      <div class="profile-card">
+        <div class="profile-header">
+          <div class="profile-avatar-large">
+            SA
+            <button class="avatar-edit-btn">📷</button>
+          </div>
+          <h2 class="profile-name">Sarah Anderson</h2>
+          <p class="profile-email">sarah.anderson@example.com</p>
+          <div class="loyalty-badge">
+            ⭐ Gold Member
+          </div>
+        </div>
+
+        <div class="profile-body">
+          <div class="section-title">
+            Personal Information
+            <button class="edit-btn" onclick="editProfile()">Edit Profile</button>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Full Name</span>
+              <span class="info-value">Sarah Anderson</span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Email Address</span>
+              <span class="info-value">sarah.anderson@example.com</span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Phone Number</span>
+              <span class="info-value">+1 (555) 987-6543</span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Member Since</span>
+              <span class="info-value">March 2024</span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Preferred Language</span>
+              <span class="info-value">English</span>
+            </div>
+
+            <div class="info-item">
+              <span class="info-label">Account Status</span>
+              <span class="info-value" style="color: var(--success);">✓ Verified</span>
+            </div>
+          </div>
+
+          <div class="section-title">
+            Account Actions
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn btn-primary" onclick="changePassword()">Change Password</button>
+            <button class="btn btn-secondary" onclick="downloadData()">Download My Data</button>
+            <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Methods -->
+      <div class="payment-card">
+        <div class="section-title">
+          Payment Methods
+          <button class="edit-btn" onclick="addPayment()">+ Add Payment</button>
+        </div>
+
+        <div class="payment-item">
+          <div class="payment-icon">💳</div>
+          <div class="payment-info">
+            <div class="payment-type">Visa •••• 4242</div>
+            <div class="payment-details">Expires 12/25 • Default payment method</div>
+          </div>
+          <span class="payment-badge">Default</span>
+        </div>
+
+        <div class="payment-item">
+          <div class="payment-icon">💳</div>
+          <div class="payment-info">
+            <div class="payment-type">Mastercard •••• 8888</div>
+            <div class="payment-details">Expires 09/26</div>
+          </div>
+          <button class="remove-payment" onclick="removePayment(this)">Remove</button>
+        </div>
+
+        <div class="payment-item">
+          <div class="payment-icon">📱</div>
+          <div class="payment-info">
+            <div class="payment-type">Apple Pay</div>
+            <div class="payment-details">Connected to sarah***@icloud.com</div>
+          </div>
+          <button class="remove-payment" onclick="removePayment(this)">Remove</button>
+        </div>
+      </div>
+
+      <!-- Saved Addresses -->
+      <div class="addresses-card">
+        <div class="section-title">
+          Saved Places
+          <button class="edit-btn" onclick="addAddress()">+ Add Place</button>
+        </div>
+
+        <div class="address-item">
+          <div class="address-icon">🏠</div>
+          <div class="address-info">
+            <div class="address-label">Home</div>
+            <div class="address-text">742 Evergreen Terrace, Springfield, IL 62701</div>
+          </div>
+        </div>
+
+        <div class="address-item">
+          <div class="address-icon">💼</div>
+          <div class="address-info">
+            <div class="address-label">Work</div>
+            <div class="address-text">123 Tech Plaza, San Francisco, CA 94105</div>
+          </div>
+        </div>
+
+        <div class="address-item">
+          <div class="address-icon">⭐</div>
+          <div class="address-info">
+            <div class="address-label">Gym</div>
+            <div class="address-text">456 Fitness Ave, San Francisco, CA 94110</div>
+          </div>
+        </div>
+
+        <button class="add-btn" onclick="addAddress()">
+          <span style="font-size: 20px;">+</span>
+          Add New Place
+        </button>
+      </div>
+
+      <!-- Recent Rides -->
+      <div class="rides-card">
+        <div class="section-title">
+          Recent Rides
+          <a href="#" style="color: var(--primary); font-size: 14px; text-decoration: none;">View All</a>
+        </div>
+
+        <div class="ride-item">
+          <div class="ride-date">
+            <span class="ride-day">28</span>
+            <span class="ride-month">Oct</span>
+          </div>
+          <div class="ride-info">
+            <div class="ride-route">Home → Downtown Office</div>
+            <div class="ride-details">4:30 PM • 12.5 miles • 25 min • Move Comfort</div>
+          </div>
+          <div class="ride-price">$24.50</div>
+        </div>
+
+        <div class="ride-item">
+          <div class="ride-date">
+            <span class="ride-day">27</span>
+            <span class="ride-month">Oct</span>
+          </div>
+          <div class="ride-info">
+            <div class="ride-route">Airport → Home</div>
+            <div class="ride-details">8:15 AM • 18.3 miles • 32 min • Move XL</div>
+          </div>
+          <div class="ride-price">$42.00</div>
+        </div>
+
+        <div class="ride-item">
+          <div class="ride-date">
+            <span class="ride-day">25</span>
+            <span class="ride-month">Oct</span>
+          </div>
+          <div class="ride-info">
+            <div class="ride-route">Home → Shopping Mall</div>
+            <div class="ride-details">2:00 PM • 8.7 miles • 18 min • Move Standard</div>
+          </div>
+          <div class="ride-price">$18.25</div>
+        </div>
+
+        <div class="ride-item">
+          <div class="ride-date">
+            <span class="ride-day">24</span>
+            <span class="ride-month">Oct</span>
+          </div>
+          <div class="ride-info">
+            <div class="ride-route">Restaurant → Home</div>
+            <div class="ride-details">9:30 PM • 6.2 miles • 15 min • Move Standard</div>
+          </div>
+          <div class="ride-price">$15.50</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function editProfile() {
+      alert('Edit profile functionality would open a modal or navigate to an edit page');
+    }
+
+    function changePassword() {
+      alert('Change password functionality would open a modal for password change');
+    }
+
+    function downloadData() {
+      alert('Your data download will begin shortly...');
+    }
+
+    function deleteAccount() {
+      if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+        alert('Account deletion process initiated. You will receive a confirmation email.');
+      }
+    }
+
+    function addPayment() {
+      alert('Add payment method functionality would open a form to add a new payment method');
+    }
+
+    function removePayment(btn) {
+      if (confirm('Are you sure you want to remove this payment method?')) {
+        btn.closest('.payment-item').remove();
+        alert('Payment method removed successfully');
+      }
+    }
+
+    function addAddress() {
+      alert('Add address functionality would open a form to save a new place');
+    }
+  </script>
+</body>
+</html>
