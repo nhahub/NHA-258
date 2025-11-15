@@ -1,0 +1,34 @@
+﻿@model ConfirmStripePaymentViewModel
+<script src="https://js.stripe.com/v3/"></script>
+
+<h2>الدفع الآمن</h2>
+
+<p>المبلغ المستحق: @Model.Amount @Model.Currency</p>
+
+<div id="payment-element"></div>
+<button id="pay-button" class="btn btn-success mt-3">ادفع الآن</button>
+
+<div id="message"></div>
+
+@section Scripts {
+    <script>
+        const stripe = Stripe("pk_test_51SP4jCE0aBVeXIUUm3XhqeogQM79fAm7mRa4zCevAgiUMNsDP8uBrVnGAEY9UAl4fFBe7lgkbtieQzoMlViUXAhP00PhTH6DEH");
+        const clientSecret = "@Model.ClientSecret";
+
+        const elements = stripe.elements({ clientSecret });
+        const paymentElement = elements.create("payment");
+        paymentElement.mount("#payment-element");
+
+        document.getElementById("pay-button").onclick = async () => {
+            const { error } = await stripe.confirmPayment({
+                elements,
+                clientSecret,
+            });
+
+            if (error)
+                document.getElementById("message").innerText = error.message;
+            else
+                document.getElementById("message").innerText = "تم الدفع بنجاح!";
+        }
+    </script>
+}

@@ -1,0 +1,13 @@
+﻿@using SmartTransportation.BLL.DTOs.Payment
+@model CreateStripePaymentRequestDto
+
+<h2>Pay Your Booking</h2>
+
+<form method="post">
+    <label>Booking ID</label>
+    <input asp-for="BookingId" class="form-control" />
+
+    <button type="submit" class="btn btn-primary mt-3">
+        Follow Payment
+    </button>
+</form>
