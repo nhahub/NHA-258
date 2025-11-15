@@ -1,4 +1,4 @@
-﻿namespace MVC.Models
+﻿namespace SmartTransportation.Web.Models
 {
     public class ConfirmStripePaymentViewModel
     {
@@ -6,6 +6,6 @@
         public decimal Amount { get; set; }
         public string Currency { get; set; } = "EGP";
         public int PaymentId { get; set; }
-        public int BookingId { get; set; }  // optional but useful for redirect after success
+        public int BookingId { get; set; }  
     }
 }

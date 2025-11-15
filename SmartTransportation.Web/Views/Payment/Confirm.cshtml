@@ -1,12 +1,13 @@
-﻿@model ConfirmStripePaymentViewModel
+﻿@using SmartTransportation.Web.Models
+@model ConfirmStripePaymentViewModel
 <script src="https://js.stripe.com/v3/"></script>
 
-<h2>الدفع الآمن</h2>
+<h2>Pay Safely</h2>
 
-<p>المبلغ المستحق: @Model.Amount @Model.Currency</p>
+<p>Needed Amount: @Model.Amount @Model.Currency</p>
 
 <div id="payment-element"></div>
-<button id="pay-button" class="btn btn-success mt-3">ادفع الآن</button>
+<button id="pay-button" class="btn btn-success mt-3">Pay Now</button>
 
 <div id="message"></div>
 
@@ -28,7 +29,7 @@
             if (error)
                 document.getElementById("message").innerText = error.message;
             else
-                document.getElementById("message").innerText = "تم الدفع بنجاح!";
+                document.getElementById("message").innerText = "Paid successfully!";
         }
     </script>
 }

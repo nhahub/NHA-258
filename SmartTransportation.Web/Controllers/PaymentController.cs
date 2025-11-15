@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MVC.Models;
+using SmartTransportation.Web.Models;
 using SmartTransportation.BLL.DTOs.Payment;
 
 public class PaymentController : Controller
