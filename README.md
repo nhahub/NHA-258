@@ -1,11 +1,10 @@
 
 # 🚍 SmartTransportation
 
-A modern, driver-centric transportation management system that connects Admins, Drivers, and Passengers in one organized platform.
-SmartTransportation solves real commuting challenges by offering structured routes, easy trip publishing, and fast seat booking — all in a secure and efficient environment.
+A modern, driver-centric transportation management system that connects Admins, Drivers, and Passengers in one organized platform. SmartTransportation solves real commuting challenges by offering structured routes, easy trip publishing, and fast seat booking — all in a secure and efficient environment.
 
-Drivers gain more flexibility and income by managing their own trips, while passengers enjoy a smooth booking experience and admins maintain full control over routes and system operations.
-Designed with clean architecture and future scalability, the system is ready for mobile expansion and real-time tracking.
+Drivers gain more flexibility and income by managing their own trips, while passengers enjoy a smooth booking experience and admins maintain full control over routes and system operations. Designed with clean architecture and future scalability, the system is ready for mobile expansion and real-time tracking.
+
 ---
 
 ## 🌟 What It Does
