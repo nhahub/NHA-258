@@ -8,6 +8,8 @@ using SmartTransportation.DAL.Models;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+
+    //Teste push 
     private readonly IAuthService _authService;
     private readonly TransportationContext _context;
 
