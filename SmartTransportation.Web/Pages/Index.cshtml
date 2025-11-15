@@ -1,0 +1,396 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Move Smart - Drive Smarter, Safer, and Connected";
+    Layout = "_Layout";
+}
+
+@section Styles {
+    <style>
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 85vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #fafbff 100%);
+            overflow: hidden;
+        }
+
+            .hero::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 60%;
+                height: 100%;
+                background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><rect fill="%23d0dff9" opacity="0.3" width="1000" height="1000"/></svg>');
+                opacity: 0.3;
+                pointer-events: none;
+            }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            padding: 80px 0;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            line-height: 1.1;
+            margin: 0 0 24px;
+            font-weight: 900;
+            color: var(--black);
+            letter-spacing: -0.02em;
+        }
+
+        .hero p {
+            font-size: 18px;
+            line-height: 1.7;
+            color: var(--gray-700);
+            margin: 0 0 32px;
+            max-width: 700px;
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 48px;
+            color: var(--black);
+        }
+
+        .section-lead {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 48px;
+            color: var(--gray-700);
+            font-size: 1.125rem;
+        }
+
+        /* Core Features Grid */
+        .core-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .core-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            transition: all 0.3s;
+        }
+
+            .core-card:hover {
+                border-color: var(--primary);
+                box-shadow: var(--shadow-lg);
+                transform: translateY(-4px);
+            }
+
+            .core-card h3 {
+                font-size: 1.5rem;
+                margin-bottom: 16px;
+                color: var(--black);
+            }
+
+            .core-card p {
+                color: var(--gray-700);
+                line-height: 1.6;
+            }
+
+        /* Benefits Grid */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px;
+        }
+
+        .benefit-card {
+            text-align: center;
+            padding: 32px 24px;
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--gray-200);
+            transition: all 0.3s;
+        }
+
+            .benefit-card:hover {
+                border-color: var(--primary);
+                box-shadow: var(--shadow-lg);
+                transform: translateY(-4px);
+            }
+
+        .benefit-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 24px;
+            background: var(--primary-bg);
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+        }
+
+        .benefit-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: var(--black);
+        }
+
+        .benefit-card p {
+            color: var(--gray-700);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* Get Started Section */
+        #get-started {
+            background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 100%);
+        }
+
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 32px;
+            margin-bottom: 48px;
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 32px 24px;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+        }
+
+        .step-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: var(--primary-bg);
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+        }
+
+        .step-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            color: var(--black);
+        }
+
+        .step-card p {
+            color: var(--gray-700);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .cta-buttons {
+            text-align: center;
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-white {
+            background: white;
+            color: var(--primary);
+            border: 2px solid white;
+        }
+
+            .btn-white:hover {
+                background: var(--primary-bg);
+            }
+
+        .btn-outline {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+            .btn-outline:hover {
+                background: white;
+                color: var(--primary);
+            }
+
+        @@media (max-width: 768px) {
+            .hero {
+                min-height: auto;
+                padding: 60px 0;
+            }
+
+            .hero-content {
+                padding: 40px 0;
+            }
+
+            section {
+                padding: 60px 0;
+            }
+
+            .core-grid, .benefits-grid, .steps-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+        }
+    </style>
+}
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <h1>Move Smart</h1>
+            <p style="font-size: 1.5rem; font-weight: 600; margin-bottom: 16px;">Drive Smarter, Safer, and Stay Connected</p>
+            <p>Transform your car into a fully connected, intelligent vehicle. Track trips, manage your EV, control access remotely, and get instant diagnostics—all from your phone.</p>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <a asp-page="/sign_up" class="btn btn-primary">Get Started Free</a>
+                <a href="#features" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Core Features Section -->
+<section id="features">
+    <div class="container">
+        <h2 class="section-title">Meet Move Smart's Core Features</h2>
+
+        <div class="core-grid">
+            <div class="core-card">
+                <h3>Real-Time Tracking & History</h3>
+                <p>View your vehicle's precise location and detailed trip history instantly. Know where your car is and review past routes effortlessly.</p>
+            </div>
+
+            <div class="core-card">
+                <h3>Remote Access & Digital Key Sharing</h3>
+                <p>Lock or unlock your doors remotely. Share digital keys securely with trusted family or friends for effortless access management.</p>
+            </div>
+
+            <div class="core-card">
+                <h3>EV Management & Mileage Verification</h3>
+                <p>Efficiently manage EV charging schedules and locations. Automated mileage verification simplifies expense and tax reporting.</p>
+            </div>
+
+            <div class="core-card">
+                <h3>Instant Diagnostics & Alerts</h3>
+                <p>Receive instant notifications for maintenance needs, diagnostic trouble codes, and critical vehicle health status updates.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Section -->
+<section id="benefits" style="background: var(--gray-50);">
+    <div class="container">
+        <h2 class="section-title">How Move Smart Makes Driving Safer and Easier</h2>
+
+        <div class="benefits-grid">
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <svg viewBox="0 0 24 24" width="40" height="40">
+                        <circle cx="12" cy="12" r="10" fill="#5b6fd8" />
+                        <path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none" />
+                    </svg>
+                </div>
+                <h3>Emergency Safety</h3>
+                <p>Integrated emergency assistance button and real-time driver performance insights for rapid response and safer habits.</p>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <svg viewBox="0 0 24 24" width="40" height="40">
+                        <rect x="4" y="4" width="16" height="16" rx="2" fill="#5b6fd8" />
+                        <path d="M8 12h8M12 8v8" stroke="white" stroke-width="2" />
+                    </svg>
+                </div>
+                <h3>Efficiency Boost</h3>
+                <p>Receive personalized driving tips to improve fuel efficiency and minimize wear and tear on your vehicle components.</p>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <svg viewBox="0 0 24 24" width="40" height="40">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" fill="#5b6fd8" />
+                        <path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" fill="white" />
+                    </svg>
+                </div>
+                <h3>Virtual Key Access</h3>
+                <p>Securely share virtual keys with family or trusted contacts, eliminating the need to exchange physical keys.</p>
+            </div>
+
+            <div class="benefit-card">
+                <div class="benefit-icon">
+                    <svg viewBox="0 0 24 24" width="40" height="40">
+                        <circle cx="12" cy="12" r="10" fill="#5b6fd8" />
+                        <path d="M12 2v10l8 4" fill="white" />
+                    </svg>
+                </div>
+                <h3>Service Navigation</h3>
+                <p>Integrated maps guide you instantly to the nearest EV charging stations or certified service centers.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Get Started Section -->
+<section id="get-started">
+    <div class="container">
+        <h2 class="section-title">Get Started with Move Smart Today</h2>
+        <p class="section-lead">Transform your driving experience in just four simple steps. Joining the Move Smart community is fast, easy, and secure.</p>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32">
+                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" fill="#5b6fd8" />
+                    </svg>
+                </div>
+                <h3>Download the App</h3>
+                <p>Find Move Smart on the iOS App Store and Google Play Store.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#5b6fd8" />
+                    </svg>
+                </div>
+                <h3>Create Your Account</h3>
+                <p>Sign up quickly with your email or social credentials.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32">
+                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z" fill="#5b6fd8" />
+                    </svg>
+                </div>
+                <h3>Connect Your Car</h3>
+                <p>Link your vehicle with four simple clicks using the secure Smartcar Connect process.</p>
+            </div>
+
+            <div class="step-card">
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" width="32" height="32">
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="#5b6fd8" />
+                    </svg>
+                </div>
+                <h3>Start Driving Smarter</h3>
+                <p>Unlock a smarter driving lifestyle and enjoy connected journeys.</p>
+            </div>
+        </div>
+
+        <div class="cta-buttons">
+            <a asp-page="/sign_up" class="btn btn-primary" style="display: inline-flex;">Get Started Now</a>
+        </div>
+    </div>
+</section>
