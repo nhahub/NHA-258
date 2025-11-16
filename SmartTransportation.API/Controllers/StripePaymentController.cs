@@ -17,63 +17,38 @@ namespace SmartTransportation.API.Controllers
             _stripePaymentService = stripePaymentService;
         }
 
-        [HttpPost("create")]
-        public async Task<ActionResult<CreateStripePaymentResponseDto>> Create([FromBody] CreateStripePaymentRequestDto dto)
-        {
-            if (dto == null || dto.BookingId <= 0)
-                return BadRequest(new { Message = "BookingId is required." });
-
-            try
-            {
-                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
-
-                var response = new CreateStripePaymentResponseDto
-                {
-                    PaymentId = payment.PaymentId,
-                    BookingId = payment.BookingId,
-                    Amount = payment.Amount,
-                    Currency = payment.Currency,
-                    Status = payment.Status,
-                    ClientSecret = clientSecret
-                };
-
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Error creating Stripe payment.", Error = ex.Message });
-            }
-        }
-
+        /// <summary>
+        /// Egypt-simple flow:
+        /// Create + confirm platform fee payment in one shot using PaymentMethodId.
+        /// This is what your MVC app will call.
+        /// </summary>
         [HttpPost("create-and-confirm")]
         public async Task<ActionResult<CreateStripePaymentResponseDto>> CreateAndConfirm([FromBody] CreateStripePaymentRequestDto dto)
         {
             if (dto == null || dto.BookingId <= 0)
                 return BadRequest(new { Message = "BookingId is required." });
 
+            if (string.IsNullOrWhiteSpace(dto.PaymentMethodId))
+                return BadRequest(new { Message = "PaymentMethodId is required." });
+
             try
             {
-                // Step 1: Create PaymentIntent
-                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
-
-                // Step 2: If PaymentMethodId is passed, confirm immediately
-                if (!string.IsNullOrWhiteSpace(dto.PaymentMethodId))
-                {
-                    payment = await _stripePaymentService.ConfirmPaymentAsync(payment.PaymentId, dto.PaymentMethodId);
-                }
+                var payment = await _stripePaymentService.CreateAndConfirmPlatformFeeAsync(dto.BookingId, dto.PaymentMethodId);
 
                 var response = new CreateStripePaymentResponseDto
                 {
                     PaymentId = payment.PaymentId,
                     BookingId = payment.BookingId,
-                    Amount = payment.Amount,
+                    Amount = payment.Amount,      // platform fee
                     Currency = payment.Currency,
-                    Status = payment.Status,
-                    ClientSecret = clientSecret
+                    Status = payment.Status
                 };
 
-
                 return Ok(response);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -81,8 +56,10 @@ namespace SmartTransportation.API.Controllers
             }
         }
 
-
-        // Optional: refresh without confirming
+        /// <summary>
+        /// Optional: manually refresh status from Stripe for a given PaymentId.
+        /// Your MVC UI can poll this if needed.
+        /// </summary>
         [HttpGet("{paymentId}/status")]
         public async Task<IActionResult> GetStatus(int paymentId)
         {
@@ -99,6 +76,10 @@ namespace SmartTransportation.API.Controllers
                     payment.PaidAt
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "Error getting payment status.", Error = ex.Message });
@@ -106,3 +87,142 @@ namespace SmartTransportation.API.Controllers
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//using Microsoft.AspNetCore.Mvc;
+//using SmartTransportation.BLL.DTOs.Payment;
+//using SmartTransportation.BLL.Services;
+//using System;
+//using System.Threading.Tasks;
+
+//namespace SmartTransportation.API.Controllers
+//{
+//    [ApiController]
+//    [Route("api/[controller]")]
+//    public class StripePaymentController : ControllerBase
+//    {
+//        private readonly StripePaymentService _stripePaymentService;
+
+//        public StripePaymentController(StripePaymentService stripePaymentService)
+//        {
+//            _stripePaymentService = stripePaymentService;
+//        }
+
+//        [HttpPost("create")]
+//        public async Task<ActionResult<CreateStripePaymentResponseDto>> Create([FromBody] CreateStripePaymentRequestDto dto)
+//        {
+//            if (dto == null || dto.BookingId <= 0)
+//                return BadRequest(new { Message = "BookingId is required." });
+
+//            try
+//            {
+//                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
+
+//                var response = new CreateStripePaymentResponseDto
+//                {
+//                    PaymentId = payment.PaymentId,
+//                    BookingId = payment.BookingId,
+//                    Amount = payment.Amount,
+//                    Currency = payment.Currency,
+//                    Status = payment.Status,
+//                    ClientSecret = clientSecret
+//                };
+
+//                return Ok(response);
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { Message = "Error creating Stripe payment.", Error = ex.Message });
+//            }
+//        }
+
+//        [HttpPost("create-and-confirm")]
+//        public async Task<ActionResult<CreateStripePaymentResponseDto>> CreateAndConfirm([FromBody] CreateStripePaymentRequestDto dto)
+//        {
+//            if (dto == null || dto.BookingId <= 0)
+//                return BadRequest(new { Message = "BookingId is required." });
+
+//            try
+//            {
+//                // Step 1: Create PaymentIntent
+//                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
+
+//                // Step 2: If PaymentMethodId is passed, confirm immediately
+//                if (!string.IsNullOrWhiteSpace(dto.PaymentMethodId))
+//                {
+//                    payment = await _stripePaymentService.ConfirmPaymentAsync(payment.PaymentId, dto.PaymentMethodId);
+//                }
+
+//                var response = new CreateStripePaymentResponseDto
+//                {
+//                    PaymentId = payment.PaymentId,
+//                    BookingId = payment.BookingId,
+//                    Amount = payment.Amount,
+//                    Currency = payment.Currency,
+//                    Status = payment.Status,
+//                    ClientSecret = clientSecret
+//                };
+
+
+//                return Ok(response);
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { Message = "Error processing Stripe payment.", Error = ex.Message });
+//            }
+//        }
+
+
+//        // Optional: refresh without confirming
+//        [HttpGet("{paymentId}/status")]
+//        public async Task<IActionResult> GetStatus(int paymentId)
+//        {
+//            try
+//            {
+//                var payment = await _stripePaymentService.RefreshStatusFromStripeAsync(paymentId);
+//                return Ok(new
+//                {
+//                    payment.PaymentId,
+//                    payment.BookingId,
+//                    payment.Amount,
+//                    payment.Currency,
+//                    payment.Status,
+//                    payment.PaidAt
+//                });
+//            }
+//            catch (Exception ex)
+//            {
+//                return StatusCode(500, new { Message = "Error getting payment status.", Error = ex.Message });
+//            }
+//        }
+//    }
+//}

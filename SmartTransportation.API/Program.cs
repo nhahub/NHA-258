@@ -60,6 +60,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddCorsPolicy();
 
+
 // =====================
 // JWT Authentication setup
 // =====================

@@ -12,8 +12,8 @@ using SmartTransportation.DAL.Models;
 namespace SmartTransportation.DAL.Migrations
 {
     [DbContext(typeof(TransportationContext))]
-    [Migration("20251114224058_AddPaymentColumns")]
-    partial class AddPaymentColumns
+    [Migration("20251116181612_m1")]
+    partial class m1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

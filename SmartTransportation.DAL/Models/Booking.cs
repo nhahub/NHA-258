@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SmartTransportation.DAL.Models;
 
+
 [Index("TripId", Name = "IX_Bookings_TripID")]
 [Index("BookerUserId", Name = "IX_Bookings_UserID")]
 public partial class Booking

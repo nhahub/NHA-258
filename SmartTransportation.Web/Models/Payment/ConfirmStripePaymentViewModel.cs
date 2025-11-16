@@ -1,4 +1,4 @@
-﻿namespace SmartTransportation.Web.Models
+﻿namespace SmartTransportation.Web.Models.Payment
 {
     public class ConfirmStripePaymentViewModel
     {
