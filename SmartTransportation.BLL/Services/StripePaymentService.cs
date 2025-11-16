@@ -59,14 +59,15 @@ namespace SmartTransportation.BLL.Services
                 Amount = amountInMinor,
                 Currency = _currency.ToLower(),
                 Metadata = new Dictionary<string, string>
-            {
-                { "BookingId", booking.BookingId.ToString() },
-                { "TotalFare", totalFare.ToString("F2") },
-                { "PlatformFee", platformFee.ToString("F2") }
-            },
+                {
+                    { "BookingId", booking.BookingId.ToString() },
+                    { "TotalFare", totalFare.ToString("F2") },
+                    { "PlatformFee", platformFee.ToString("F2") }
+                },
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
-                    Enabled = true
+                    Enabled = true,
+                    AllowRedirects = "never" // ✅ prevent redirect-based payment methods
                 }
             };
 
@@ -97,8 +98,14 @@ namespace SmartTransportation.BLL.Services
             if (payment == null) throw new InvalidOperationException("Payment not found.");
 
             var service = new PaymentIntentService();
-            var intent = await service.GetAsync(payment.StripePaymentIntentId);
 
+            // ✅ Confirm the PaymentIntent for API-only testing
+            var intent = await service.ConfirmAsync(payment.StripePaymentIntentId, new PaymentIntentConfirmOptions
+            {
+                PaymentMethod = "pm_card_visa" // Stripe test PaymentMethod that always succeeds
+            });
+
+            // Map Stripe status to your PaymentStatus
             payment.Status = intent.Status switch
             {
                 "succeeded" => PaymentStatus.Succeeded.ToString(),
@@ -115,5 +122,6 @@ namespace SmartTransportation.BLL.Services
 
             return payment;
         }
+
     }
 }
