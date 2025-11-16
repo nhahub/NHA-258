@@ -3,7 +3,12 @@ using SmartTransportation.BLL.DTOs.Booking;
 using SmartTransportation.BLL.Exceptions;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models;
+using SmartTransportation.DAL.Models.Common;
 using SmartTransportation.DAL.Repositories.UnitOfWork;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SmartTransportation.BLL.Services
 {
@@ -16,6 +21,7 @@ namespace SmartTransportation.BLL.Services
             _unitOfWork = unitOfWork;
         }
 
+        // -------------------- GET --------------------
         public async Task<BookingResponseDto?> GetBookingByIdAsync(int bookingId)
         {
             var bookings = await _unitOfWork.Bookings.GetBookingsWithDetailsAsync();
@@ -45,17 +51,16 @@ namespace SmartTransportation.BLL.Services
             return tripBookings.Select(MapToResponseDto);
         }
 
+        // -------------------- CREATE --------------------
         public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto createDto)
         {
             // Validate trip exists
-            var trip = await _unitOfWork.Trips.GetByIdAsync(createDto.TripId);
-            if (trip == null)
-                throw new NotFoundException("Trip", createDto.TripId);
+            var trip = await _unitOfWork.Trips.GetByIdAsync(createDto.TripId)
+                ?? throw new NotFoundException("Trip", createDto.TripId);
 
             // Validate user exists
-            var user = await _unitOfWork.Users.GetByIdAsync(createDto.BookerUserId);
-            if (user == null)
-                throw new NotFoundException("User", createDto.BookerUserId);
+            var user = await _unitOfWork.Users.GetByIdAsync(createDto.BookerUserId)
+                ?? throw new NotFoundException("User", createDto.BookerUserId);
 
             // Check available seats
             if (trip.AvailableSeats < createDto.SeatsCount)
@@ -84,13 +89,12 @@ namespace SmartTransportation.BLL.Services
                     var passenger = await _unitOfWork.Users.GetByIdAsync(passengerId);
                     if (passenger != null)
                     {
-                        var bookingPassenger = new BookingPassenger
+                        await _unitOfWork.BookingPassengers.AddAsync(new BookingPassenger
                         {
                             BookingId = booking.BookingId,
                             PassengerUserId = passengerId,
                             CheckInStatus = false
-                        };
-                        await _unitOfWork.BookingPassengers.AddAsync(bookingPassenger);
+                        });
                     }
                 }
             }
@@ -103,12 +107,11 @@ namespace SmartTransportation.BLL.Services
                     var segment = await _unitOfWork.RouteSegments.GetByIdAsync(segmentId);
                     if (segment != null)
                     {
-                        var bookingSegment = new BookingSegment
+                        await _unitOfWork.BookingSegments.AddAsync(new BookingSegment
                         {
                             BookingId = booking.BookingId,
                             SegmentId = segmentId
-                        };
-                        await _unitOfWork.BookingSegments.AddAsync(bookingSegment);
+                        });
                     }
                 }
             }
@@ -116,7 +119,6 @@ namespace SmartTransportation.BLL.Services
             // Update trip available seats
             trip.AvailableSeats -= createDto.SeatsCount;
             _unitOfWork.Trips.Update(trip);
-
             await _unitOfWork.SaveAsync();
 
             // Reload booking with details
@@ -125,13 +127,13 @@ namespace SmartTransportation.BLL.Services
             return MapToResponseDto(createdBooking!);
         }
 
+        // -------------------- UPDATE --------------------
         public async Task<BookingResponseDto?> UpdateBookingAsync(int bookingId, UpdateBookingDto updateDto)
         {
-            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
-            if (booking == null)
-                throw new NotFoundException("Booking", bookingId);
+            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking", bookingId);
 
-            // Update properties if provided
+            // Update properties
             if (!string.IsNullOrEmpty(updateDto.BookingStatus))
                 booking.BookingStatus = updateDto.BookingStatus;
 
@@ -159,19 +161,17 @@ namespace SmartTransportation.BLL.Services
             _unitOfWork.Bookings.Update(booking);
             await _unitOfWork.SaveAsync();
 
-            // Reload booking with details
             var bookings = await _unitOfWork.Bookings.GetBookingsWithDetailsAsync();
             var updatedBooking = bookings.FirstOrDefault(b => b.BookingId == bookingId);
             return MapToResponseDto(updatedBooking!);
         }
 
+        // -------------------- DELETE & CANCEL --------------------
         public async Task<bool> DeleteBookingAsync(int bookingId)
         {
-            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
-            if (booking == null)
-                throw new NotFoundException("Booking", bookingId);
+            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking", bookingId);
 
-            // Restore seats to trip
             var trip = await _unitOfWork.Trips.GetByIdAsync(booking.TripId);
             if (trip != null)
             {
@@ -181,19 +181,16 @@ namespace SmartTransportation.BLL.Services
 
             _unitOfWork.Bookings.Remove(booking);
             await _unitOfWork.SaveAsync();
-
             return true;
         }
 
         public async Task<bool> CancelBookingAsync(int bookingId)
         {
-            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
-            if (booking == null)
-                throw new NotFoundException("Booking", bookingId);
+            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
+                ?? throw new NotFoundException("Booking", bookingId);
 
             booking.BookingStatus = "Cancelled";
 
-            // Restore seats to trip
             var trip = await _unitOfWork.Trips.GetByIdAsync(booking.TripId);
             if (trip != null)
             {
@@ -203,10 +200,51 @@ namespace SmartTransportation.BLL.Services
 
             _unitOfWork.Bookings.Update(booking);
             await _unitOfWork.SaveAsync();
-
             return true;
         }
 
+        // -------------------- PAGINATION --------------------
+        public async Task<PagedResult<BookingResponseDto>> GetPagedBookingsAsync(string? search, int pageNumber, int pageSize)
+        {
+            // Start with IQueryable from repository
+            var query = _unitOfWork.Bookings.QueryBookingsWithDetails(); // This should return IQueryable<Booking>
+
+            // Apply search filter if provided
+            if (!string.IsNullOrEmpty(search))
+            {
+                query = query.Where(b =>
+                    (b.BookerUser != null && b.BookerUser.UserName.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
+                    (b.Trip != null && b.Trip.Status.Contains(search, StringComparison.OrdinalIgnoreCase))
+                );
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+
+            // Apply pagination
+            var bookings = await query
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Include(b => b.BookerUser)
+                .Include(b => b.Trip)
+                .Include(b => b.BookingPassengers)
+                    .ThenInclude(bp => bp.PassengerUser)
+                .Include(b => b.BookingSegments)
+                .ToListAsync();
+
+            // Map to DTOs
+            var items = bookings.Select(MapToResponseDto).ToList();
+
+            return new PagedResult<BookingResponseDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+        }
+
+        // -------------------- MAPPER --------------------
         private BookingResponseDto MapToResponseDto(Booking booking)
         {
             return new BookingResponseDto
@@ -246,4 +284,3 @@ namespace SmartTransportation.BLL.Services
         }
     }
 }
-

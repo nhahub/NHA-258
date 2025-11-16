@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using SmartTransportation.BLL.DTOs.Booking;
 using SmartTransportation.BLL.Exceptions;
 using SmartTransportation.BLL.Interfaces;
+using SmartTransportation.DAL.Models.Common;
 
 namespace SmartTransportation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize] // Require authentication for all actions
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
@@ -18,10 +19,28 @@ namespace SmartTransportation.Controllers
             _bookingService = bookingService;
         }
 
-        /// <summary>
-        /// Get all bookings
-        /// </summary>
+        // ---------------- GET PAGED BOOKINGS ----------------
+        [HttpGet("paged")]
+        [Authorize(Roles = "Admin")] // Only Admin can see all bookings paged
+        public async Task<ActionResult<PagedResult<BookingResponseDto>>> GetPagedBookings(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            try
+            {
+                var pagedBookings = await _bookingService.GetPagedBookingsAsync(search, pageNumber, pageSize);
+                return Ok(pagedBookings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred while retrieving paged bookings.", error = ex.Message });
+            }
+        }
+
+        // ---------------- GET ALL BOOKINGS ----------------
         [HttpGet]
+        [Authorize(Roles = "Admin")] // Only Admin can get all bookings
         public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetAllBookings()
         {
             try
@@ -35,9 +54,7 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Get booking by ID
-        /// </summary>
+        // ---------------- GET BOOKING BY ID ----------------
         [HttpGet("{id}")]
         public async Task<ActionResult<BookingResponseDto>> GetBookingById(int id)
         {
@@ -55,9 +72,7 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Get bookings by user ID
-        /// </summary>
+        // ---------------- GET BOOKINGS BY USER ----------------
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetBookingsByUserId(int userId)
         {
@@ -72,10 +87,9 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Get bookings by trip ID
-        /// </summary>
+        // ---------------- GET BOOKINGS BY TRIP ----------------
         [HttpGet("trip/{tripId}")]
+        [Authorize(Roles = "Admin,Driver")] // Only Admin or Driver can get bookings by trip
         public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetBookingsByTripId(int tripId)
         {
             try
@@ -89,10 +103,9 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Create a new booking
-        /// </summary>
+        // ---------------- CREATE BOOKING ----------------
         [HttpPost]
+        [Authorize(Roles = "Passenger")] // Only Passenger can create booking
         public async Task<ActionResult<BookingResponseDto>> CreateBooking([FromBody] CreateBookingDto createDto)
         {
             try
@@ -117,10 +130,9 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Update a booking
-        /// </summary>
+        // ---------------- UPDATE BOOKING ----------------
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Passenger")] // Admin or Passenger can update booking
         public async Task<ActionResult<BookingResponseDto>> UpdateBooking(int id, [FromBody] UpdateBookingDto updateDto)
         {
             try
@@ -148,10 +160,9 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Cancel a booking
-        /// </summary>
+        // ---------------- CANCEL BOOKING ----------------
         [HttpPost("{id}/cancel")]
+        [Authorize(Roles = "Passenger")] // Only Passenger can cancel their booking
         public async Task<ActionResult> CancelBooking(int id)
         {
             try
@@ -172,10 +183,9 @@ namespace SmartTransportation.Controllers
             }
         }
 
-        /// <summary>
-        /// Delete a booking
-        /// </summary>
+        // ---------------- DELETE BOOKING ----------------
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")] // Only Admin can delete bookings
         public async Task<ActionResult> DeleteBooking(int id)
         {
             try

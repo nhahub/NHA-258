@@ -6,5 +6,7 @@ namespace SmartTransportation.DAL.Repositories
     public interface IBookingRepository : Generic.IGenericRepository<Booking>
     {
         Task<IEnumerable<Booking>> GetBookingsWithDetailsAsync();
+
+        IQueryable<Booking> QueryBookingsWithDetails();
     }
 }
