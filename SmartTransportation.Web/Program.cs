@@ -1,29 +1,52 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddRazorPages();
-builder.Services.AddHttpClient();
+// --------------------------------------------
+// Add Services
+// --------------------------------------------
 
+// Enable MVC (Controllers + Views)
+builder.Services.AddControllersWithViews();
+
+// Enable Razor Pages (optional, if you use them)
+builder.Services.AddRazorPages();
+
+// HttpClient (required for your PaymentController)
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 
+// --------------------------------------------
+// Configure Middleware
+// --------------------------------------------
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 
+// Allow serving CSS, JS, images, etc.
+app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
+// --------------------------------------------
+// Routes
+// --------------------------------------------
+
+// MVC controller routes
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}"
+);
+
+// Razor pages route (optional)
+app.MapRazorPages();
+
+// --------------------------------------------
 
 app.Run();
