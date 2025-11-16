@@ -9,6 +9,6 @@
         public string Status { get; set; }
 
         // This goes to the frontend to confirm the payment via Stripe.js
-        //public string ClientSecret { get; set; }
+        public string ClientSecret { get; set; }
     }
 }

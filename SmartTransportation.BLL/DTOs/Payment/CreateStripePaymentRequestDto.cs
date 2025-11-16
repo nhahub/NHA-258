@@ -11,6 +11,6 @@ namespace SmartTransportation.BLL.DTOs.Payment
         public int BookingId { get; set; }
 
         // for dynamic test cards
-        public string PaymentMethodId { get; set; }
+        public string? PaymentMethodId { get; set; }
     }
 }
