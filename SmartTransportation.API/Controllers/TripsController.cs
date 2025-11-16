@@ -1,9 +1,8 @@
-// Path: SmartTransportation/Controllers/TripsController.cs
-// *** VERSION 17: Added Lifecycle Endpoints ***
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartTransportation.BLL.DTOs.Trip;
-using SmartTransportation.BLL.DTOs.Route;
 using SmartTransportation.BLL.Interfaces;
+using SmartTransportation.DAL.Models.Common;
 using System.Threading.Tasks;
 using System;
 
@@ -11,6 +10,7 @@ namespace SmartTransportation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] 
     public class TripsController : ControllerBase
     {
         private readonly ITripService _tripService;
@@ -19,6 +19,9 @@ namespace SmartTransportation.Controllers
             _tripService = tripService;
         }
 
+        // =====================
+        // GET: api/Trips/{id}
+        // =====================
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTripById(int id)
         {
@@ -27,6 +30,9 @@ namespace SmartTransportation.Controllers
             return Ok(trip);
         }
 
+        // =====================
+        // GET: api/Trips/ByRoute/{routeId}
+        // =====================
         [HttpGet("ByRoute/{routeId}")]
         public async Task<IActionResult> GetTripsByRoute(int routeId)
         {
@@ -34,24 +40,49 @@ namespace SmartTransportation.Controllers
             return Ok(trips);
         }
 
+        // =====================
+        // GET: api/Trips/paged
+        // =====================
+        [HttpGet("paged")]
+        public async Task<ActionResult<PagedResult<TripDetailsDTO>>> GetPagedTrips(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var pagedTrips = await _tripService.GetPagedTripsAsync(search, pageNumber, pageSize);
+            return Ok(pagedTrips);
+        }
+
+        // =====================
+        // POST: api/Trips
+        // =====================
         [HttpPost]
+        [Authorize(Roles = "Driver,Admin")] // Only Driver or Admin can create trips
         public async Task<IActionResult> CreateTrip([FromBody] CreateTripDTO tripDto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { Error = "BadRequest", Message = "Invalid trip data.", Details = ModelState });
+
             try
             {
                 var newTrip = await _tripService.CreateTripAsync(tripDto);
                 return CreatedAtAction(nameof(GetTripById), new { id = newTrip.TripId }, newTrip);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return StatusCode(403, new { Error = "Forbidden", Message = "You do not have permission to create a trip." });
+            }
             catch (Exception ex)
             {
-                // This will now catch "Route not found" or "Driver not found"
-                return BadRequest(ex.Message);
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
 
-        // --- START OF NEW ENDPOINTS ---
-
-        [HttpPost("{id}/start")] // e.g., POST /api/Trips/12/start
+        // =====================
+        // POST: api/Trips/{id}/start
+        // =====================
+        [HttpPost("{id}/start")]
+        [Authorize(Roles = "Driver,Admin")] // Only Driver or Admin can start
         public async Task<IActionResult> StartTrip(int id)
         {
             try
@@ -61,12 +92,15 @@ namespace SmartTransportation.Controllers
             }
             catch (Exception ex)
             {
-                // Returns 400 if trip not found or status is wrong
-                return BadRequest(ex.Message);
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
 
-        [HttpPost("{id}/complete")] // e.g., POST /api/Trips/12/complete
+        // =====================
+        // POST: api/Trips/{id}/complete
+        // =====================
+        [HttpPost("{id}/complete")]
+        [Authorize(Roles = "Driver,Admin")] // Only Driver or Admin can complete
         public async Task<IActionResult> CompleteTrip(int id)
         {
             try
@@ -76,11 +110,10 @@ namespace SmartTransportation.Controllers
             }
             catch (Exception ex)
             {
-                // Returns 400 if trip not found or status is wrong
-                return BadRequest(ex.Message);
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
-        
-        // --- END OF NEW ENDPOINTS ---
+
+       
     }
 }
