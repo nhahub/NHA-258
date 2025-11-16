@@ -22,8 +22,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequestDto dto)
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState); 
+
         var result = await _authService.RegisterAsync(dto);
 
         if (!result.Success)
@@ -33,8 +36,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login(LoginRequestDto dto)
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
         var result = await _authService.LoginAsync(dto);
 
         if (!result.Success)
@@ -42,6 +48,7 @@ public class AuthController : ControllerBase
 
         return Ok(result.Data);
     }
+
 
 
     [HttpPost("google-login")]
