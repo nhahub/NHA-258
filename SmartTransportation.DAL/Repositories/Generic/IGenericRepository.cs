@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using SmartTransportation.DAL.Models.Common;
 
 namespace SmartTransportation.DAL.Repositories.Generic
 {
@@ -13,5 +14,15 @@ namespace SmartTransportation.DAL.Repositories.Generic
         Task AddAsync(T entity);
         void Update(T entity);
         void Remove(T entity);
+
+        // ⭐ Save changes
+        Task SaveAsync();
+
+        // ⭐ Paged result
+        Task<PagedResult<T>> GetPagedAsync(
+            Expression<Func<T, bool>> filter,
+            int pageNumber,
+            int pageSize,
+            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null);
     }
 }
