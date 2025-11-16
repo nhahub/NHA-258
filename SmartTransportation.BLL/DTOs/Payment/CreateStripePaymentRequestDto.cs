@@ -9,5 +9,8 @@ namespace SmartTransportation.BLL.DTOs.Payment
     public class CreateStripePaymentRequestDto
     {
         public int BookingId { get; set; }
+
+        // Optional: for dynamic test cards
+        public string? PaymentMethodId { get; set; }
     }
 }

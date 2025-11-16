@@ -45,7 +45,44 @@ namespace SmartTransportation.API.Controllers
             }
         }
 
-        // Optional: endpoint to refresh status without webhooks
+        [HttpPost("create-and-confirm")]
+        public async Task<ActionResult<CreateStripePaymentResponseDto>> CreateAndConfirm([FromBody] CreateStripePaymentRequestDto dto)
+        {
+            if (dto == null || dto.BookingId <= 0)
+                return BadRequest(new { Message = "BookingId is required." });
+
+            try
+            {
+                // Step 1: Create PaymentIntent
+                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
+
+                // Step 2: If PaymentMethodId is passed, confirm immediately
+                if (!string.IsNullOrWhiteSpace(dto.PaymentMethodId))
+                {
+                    payment = await _stripePaymentService.ConfirmPaymentAsync(payment.PaymentId, dto.PaymentMethodId);
+                }
+
+                var response = new CreateStripePaymentResponseDto
+                {
+                    PaymentId = payment.PaymentId,
+                    BookingId = payment.BookingId,
+                    Amount = payment.Amount,
+                    Currency = payment.Currency,
+                    Status = payment.Status,
+                    ClientSecret = clientSecret
+                };
+
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error processing Stripe payment.", Error = ex.Message });
+            }
+        }
+
+
+        // Optional: refresh without confirming
         [HttpGet("{paymentId}/status")]
         public async Task<IActionResult> GetStatus(int paymentId)
         {

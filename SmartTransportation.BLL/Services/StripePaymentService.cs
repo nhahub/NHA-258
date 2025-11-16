@@ -5,8 +5,6 @@ using SmartTransportation.DAL.Repositories.UnitOfWork;
 using Stripe;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.BLL.Services
@@ -17,7 +15,6 @@ namespace SmartTransportation.BLL.Services
         private readonly string _currency;
         private const decimal PlatformFeePercent = 0.05m; // 5%
 
-
         public StripePaymentService(IUnitOfWork unitOfWork, IConfiguration config)
         {
             _unitOfWork = unitOfWork;
@@ -26,26 +23,17 @@ namespace SmartTransportation.BLL.Services
             _currency = config["Stripe:Currency"] ?? "EGP";
         }
 
-        /// <summary>
-        /// Creates a Stripe PaymentIntent for a booking and stores a Payment row.
-        /// Returns clientSecret for frontend to confirm.
-        /// </summary>
-
+        // Create PaymentIntent only
         public async Task<(Payment payment, string clientSecret)> CreatePaymentIntentAsync(int bookingId)
         {
-            var booking = await _unitOfWork.Bookings
-                .GetByIdAsync(bookingId);
-
+            var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
             if (booking == null)
                 throw new InvalidOperationException("Booking not found.");
 
             if (booking.TotalAmount <= 0)
                 throw new InvalidOperationException("Booking total amount must be greater than 0.");
 
-            // ✅ Full trip price:
             var totalFare = booking.TotalAmount;
-
-            // ✅ Only 5% goes through Stripe (platform fee)
             var platformFee = Math.Round(totalFare * PlatformFeePercent, 2);
 
             if (platformFee <= 0)
@@ -67,7 +55,7 @@ namespace SmartTransportation.BLL.Services
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
                     Enabled = true,
-                    AllowRedirects = "never" // ✅ prevent redirect-based payment methods
+                    AllowRedirects = "never"
                 }
             };
 
@@ -76,22 +64,63 @@ namespace SmartTransportation.BLL.Services
             var payment = new Payment
             {
                 BookingId = booking.BookingId,
-                Amount = platformFee,            // ✅ we store only the 5% fee
+                Amount = platformFee,
                 Currency = _currency,
                 StripePaymentIntentId = intent.Id,
                 Status = PaymentStatus.Pending.ToString(),
                 CreatedAt = DateTime.UtcNow
             };
 
-            _unitOfWork.Payments.AddAsync(payment);
+            await _unitOfWork.Payments.AddAsync(payment);
             await _unitOfWork.SaveAsync();
 
             return (payment, intent.ClientSecret);
         }
 
-        /// <summary>
-        /// Optionally refresh status from Stripe (if you don't use webhooks).
-        /// </summary>
+
+        // Confirm payment (success or failed)
+        public async Task<Payment> ConfirmPaymentAsync(int paymentId, string paymentMethodId)
+        {
+            var payment = await _unitOfWork.Payments.GetByIdAsync(paymentId);
+            if (payment == null) throw new InvalidOperationException("Payment not found.");
+
+            var service = new PaymentIntentService();
+            PaymentIntent intent;
+
+            try
+            {
+                intent = await service.ConfirmAsync(payment.StripePaymentIntentId, new PaymentIntentConfirmOptions
+                {
+                    PaymentMethod = paymentMethodId
+                });
+            }
+            catch (StripeException ex)
+            {
+                payment.Status = PaymentStatus.Failed.ToString();
+                payment.LastError = ex.Message;
+                _unitOfWork.Payments.Update(payment);
+                await _unitOfWork.SaveAsync();
+                return payment;
+            }
+
+            payment.Status = intent.Status switch
+            {
+                "succeeded" => PaymentStatus.Succeeded.ToString(),
+                "requires_payment_method" => PaymentStatus.Failed.ToString(),
+                "canceled" => PaymentStatus.Canceled.ToString(),
+                _ => PaymentStatus.Pending.ToString()
+            };
+
+            if (intent.Status == "succeeded")
+                payment.PaidAt = DateTime.UtcNow;
+
+            _unitOfWork.Payments.Update(payment);
+            await _unitOfWork.SaveAsync();
+
+            return payment;
+        }
+
+        // Refresh status from Stripe (no confirm)
         public async Task<Payment> RefreshStatusFromStripeAsync(int paymentId)
         {
             var payment = await _unitOfWork.Payments.GetByIdAsync(paymentId);
@@ -99,11 +128,18 @@ namespace SmartTransportation.BLL.Services
 
             var service = new PaymentIntentService();
 
-            // ✅ Confirm the PaymentIntent for API-only testing
-            var intent = await service.ConfirmAsync(payment.StripePaymentIntentId, new PaymentIntentConfirmOptions
+            PaymentIntent intent;
+            try
             {
-                PaymentMethod = "pm_card_visa" // Stripe test PaymentMethod that always succeeds
-            });
+                intent = await service.GetAsync(payment.StripePaymentIntentId);
+            }
+            catch (StripeException ex)
+            {
+                payment.LastError = ex.Message;
+                _unitOfWork.Payments.Update(payment);
+                await _unitOfWork.SaveAsync();
+                throw;
+            }
 
             // Map Stripe status to your PaymentStatus
             payment.Status = intent.Status switch
@@ -122,6 +158,5 @@ namespace SmartTransportation.BLL.Services
 
             return payment;
         }
-
     }
 }
