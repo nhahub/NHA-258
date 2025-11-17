@@ -6,3 +6,4 @@ obj/
 node_modules/
 appsettings.json
 .env
+SmartTransportation.Web/appsettings.json
