@@ -17,33 +17,33 @@ namespace SmartTransportation.API.Controllers
             _stripePaymentService = stripePaymentService;
         }
 
-        [HttpPost("create")]
-        public async Task<ActionResult<CreateStripePaymentResponseDto>> Create([FromBody] CreateStripePaymentRequestDto dto)
-        {
-            if (dto == null || dto.BookingId <= 0)
-                return BadRequest(new { Message = "BookingId is required." });
+        //[HttpPost("create")]
+        //public async Task<ActionResult<CreateStripePaymentResponseDto>> Create([FromBody] CreateStripePaymentRequestDto dto)
+        //{
+        //    if (dto == null || dto.BookingId <= 0)
+        //        return BadRequest(new { Message = "BookingId is required." });
 
-            try
-            {
-                var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
+        //    try
+        //    {
+        //        var (payment, clientSecret) = await _stripePaymentService.CreatePaymentIntentAsync(dto.BookingId);
 
-                var response = new CreateStripePaymentResponseDto
-                {
-                    PaymentId = payment.PaymentId,
-                    BookingId = payment.BookingId,
-                    Amount = payment.Amount,
-                    Currency = payment.Currency,
-                    Status = payment.Status,
-                    ClientSecret = clientSecret
-                };
+        //        var response = new CreateStripePaymentResponseDto
+        //        {
+        //            PaymentId = payment.PaymentId,
+        //            BookingId = payment.BookingId,
+        //            Amount = payment.Amount,
+        //            Currency = payment.Currency,
+        //            Status = payment.Status,
+        //            ClientSecret = clientSecret
+        //        };
 
-                return Ok(response);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "Error creating Stripe payment.", Error = ex.Message });
-            }
-        }
+        //        return Ok(response);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { Message = "Error creating Stripe payment.", Error = ex.Message });
+        //    }
+        //}
 
         [HttpPost("create-and-confirm")]
         public async Task<ActionResult<CreateStripePaymentResponseDto>> CreateAndConfirm([FromBody] CreateStripePaymentRequestDto dto)
