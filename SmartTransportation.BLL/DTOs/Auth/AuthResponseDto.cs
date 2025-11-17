@@ -1,22 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text.Json.Serialization;
 
-namespace SmartTransportation.BLL.DTOs.Auth
+public class AuthResponseDto
 {
-    public class AuthResponseDto
-    {
-        public required string Token { get; set; }
-        public required string UserName { get; set; }
-        public required string Email { get; set; }
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = string.Empty;
 
-        public static AuthResponseDto Empty => new()
-        {
-            Token = string.Empty,
-            UserName = string.Empty,
-            Email = string.Empty
-        };
-    }
+    [JsonPropertyName("userName")]
+    public string UserName { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
 }

@@ -1,41 +1,88 @@
+using Azure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SmartTransportation.BLL.DTOs.Auth;
 using System.ComponentModel.DataAnnotations;
 
-namespace SmartTransportation.Web.Pages
+public class Log_InModel : PageModel
 {
-    public class Log_InModel : PageModel
+    private readonly IConfiguration _configuration;
+
+    public Log_InModel(IConfiguration configuration)
     {
-        [BindProperty]
-        [Required(ErrorMessage = "Email is required")]
-        [EmailAddress(ErrorMessage = "Invalid email address")]
-        public string Email { get; set; } = string.Empty;
+        _configuration = configuration;
+    }
 
-        [BindProperty]
-        [Required(ErrorMessage = "Password is required")]
-        [DataType(DataType.Password)]
-        public string Password { get; set; } = string.Empty;
+    [BindProperty]
+    [Required(ErrorMessage = "Email is required")]
+    [EmailAddress(ErrorMessage = "Invalid email address")]
+    public string Email { get; set; } = string.Empty;
 
-        [BindProperty]
-        public bool RememberMe { get; set; }
+    [BindProperty]
+    [Required(ErrorMessage = "Password is required")]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = string.Empty;
 
-        public string? ErrorMessage { get; set; }
+    [BindProperty]
+    public bool RememberMe { get; set; }
 
-        public void OnGet()
+    public string? ErrorMessage { get; set; }
+
+    public void OnGet() { }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        if (!ModelState.IsValid)
+            return Page();
+
+        var loginDto = new { Email, Password };
+
+        // Get API base URL from configuration
+        var apiBaseUrl = _configuration["ApiBaseUrl"];
+
+        using var client = new HttpClient();
+
+        try
         {
-            // Initialize page
-        }
+            // Call the login API
+            var response = await client.PostAsJsonAsync($"{apiBaseUrl}/api/auth/login", loginDto);
 
-        public IActionResult OnPost()
-        {
-            if (!ModelState.IsValid)
+            if (response.IsSuccessStatusCode)
             {
+                // Deserialize directly to AuthResponseDto
+                var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
+
+                if (!string.IsNullOrEmpty(result?.Token))
+                {
+                    // Set JWT cookie
+                    Response.Cookies.Append("AuthToken", result.Token, new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTime.UtcNow.AddHours(1)
+                    });
+
+                    return RedirectToPage("/Index"); //// Just 
+                }
+                else
+                {
+                    ErrorMessage = "Login failed. Token not received.";
+                    return Page();
+                }
+            }
+            else
+            {
+                ErrorMessage = "Invalid email or password.";
                 return Page();
             }
-
-            // TODO: Implement authentication logic
-            // Redirect to dashboard after successful login
-            return RedirectToPage("/Index");
+        }
+        catch (Exception ex)
+        {
+            // Optional: log exception
+            ErrorMessage = $"Login failed: {ex.Message}";
+            return Page();
         }
     }
+
 }

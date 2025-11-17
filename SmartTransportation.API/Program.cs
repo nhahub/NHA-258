@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -90,15 +90,26 @@ builder.Services.AddAuthentication(options =>
     // Map UserType from JWT claims to RoleClaimType
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            // If Authorization header is empty → try cookie
+            if (string.IsNullOrEmpty(context.Token) &&
+                context.Request.Cookies.ContainsKey("AuthToken"))
+            {
+                context.Token = context.Request.Cookies["AuthToken"];
+            }
+
+            return Task.CompletedTask;
+        },
+
         OnTokenValidated = context =>
         {
             var claimsIdentity = context.Principal?.Identity as ClaimsIdentity;
             if (claimsIdentity != null)
             {
-                var userTypeClaim = claimsIdentity.FindFirst("UserType"); // <- fix here
+                var userTypeClaim = claimsIdentity.FindFirst("UserType");
                 if (userTypeClaim != null)
                 {
-                    // Add a Role claim based on UserType
                     string roleName = userTypeClaim.Value switch
                     {
                         "1" => "Admin",
@@ -106,12 +117,14 @@ builder.Services.AddAuthentication(options =>
                         "3" => "Passenger",
                         _ => "User"
                     };
+
                     claimsIdentity.AddClaim(new Claim(ClaimsIdentity.DefaultRoleClaimType, roleName));
                 }
             }
             return Task.CompletedTask;
         }
     };
+
 });
 
 // =====================

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // --------------------------------------------
@@ -12,6 +14,21 @@ builder.Services.AddRazorPages();
 
 // HttpClient (required for your PaymentController)
 builder.Services.AddHttpClient();
+
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Log_In"; // Redirect if not authenticated
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+        options.SlidingExpiration = true;
+    });
+
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AuthorizePage("/Dashboard"); // only logged-in users
+});
+
 
 var app = builder.Build();
 
@@ -32,7 +49,10 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+
+app.UseAuthentication(); // <-- Must come before UseAuthorization
 app.UseAuthorization();
+
 
 // --------------------------------------------
 // Routes
