@@ -1,0 +1,102 @@
+﻿/* Page container */
+.payment-container {
+    display: flex;
+    flex-direction:column;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 50px;
+}
+
+/* Main card */
+.payment-card {
+    background: #ffffff;
+    padding: 30px;
+    width: 380px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
+    text-align: center;
+   
+}
+
+/* Title */
+.payment-title {
+    text-align: center;
+    font-size: 28px;
+    color: #5b6fd8; /* Google Blue */
+    margin-bottom: 15px;
+}
+
+/* Booking info */
+.booking-info {
+    font-size: 16px;
+    color: #444;
+    margin-bottom: 20px;
+}
+
+/* Label */
+.label {
+    text-align: left;
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1a73e8;
+}
+
+/* Stripe input */
+.stripe-input {
+    padding: 12px;
+    border: 2px solid #bcd2ff;
+    border-radius: 8px;
+    background: #f7faff;
+    margin-bottom: 12px;
+}
+
+/* Error message */
+.error-text {
+    color: #ff4b4b;
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* Pay button */
+.pay-btn {
+    width: 100%;
+    padding: 12px;
+    background: #5b6fd8;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .2s;
+    margin-top: 10px;
+}
+
+    .pay-btn:hover {
+        background: #145bb5;
+    }
+
+    .pay-btn:disabled {
+        background: #8ab4f8;
+        cursor: not-allowed;
+    }
+
+/* Result message */
+.result-message {
+    margin-bottom: 18px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+    .result-message.success {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .result-message.error {
+        background: #ffebee;
+        color: #c62828;
+    }
