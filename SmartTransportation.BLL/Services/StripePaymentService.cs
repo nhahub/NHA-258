@@ -23,6 +23,24 @@ namespace SmartTransportation.BLL.Services
             _currency = config["Stripe:Currency"] ?? "EGP";
         }
 
+
+        public async Task<Payment> GetPaymentByIdAsync(int paymentId)
+        {
+            var payment = await _unitOfWork.Payments.GetByIdAsync(paymentId);
+            if (payment == null)
+                throw new InvalidOperationException("Payment not found.");
+
+            return payment;
+        }
+
+        public async Task<IEnumerable<Payment>> GetAllPaymentsAsync()
+        {
+            var payments = await _unitOfWork.Payments.GetAllAsync();
+            // If your repository returns IQueryable, you may need .ToListAsync()
+            return payments;
+        }
+
+
         // Create PaymentIntent only
         public async Task<(Payment payment, string clientSecret)> CreatePaymentIntentAsync(int bookingId)
         {
@@ -112,7 +130,16 @@ namespace SmartTransportation.BLL.Services
             };
 
             if (intent.Status == "succeeded")
+            {
                 payment.PaidAt = DateTime.UtcNow;
+                var booking = await _unitOfWork.Bookings.GetByIdAsync(payment.BookingId);
+                if (booking != null)
+                {
+                    booking.BookingStatus = "Confirmed";
+                    booking.PaymentStatus = "Paid";
+                    _unitOfWork.Bookings.Update(booking);
+                }
+            }
 
             _unitOfWork.Payments.Update(payment);
             await _unitOfWork.SaveAsync();

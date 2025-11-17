@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SmartTransportation.BLL.DTOs.Payment;
 using SmartTransportation.BLL.Services;
+using SmartTransportation.DAL.Models;
 using System;
 using System.Threading.Tasks;
 
@@ -17,7 +18,7 @@ namespace SmartTransportation.API.Controllers
             _stripePaymentService = stripePaymentService;
         }
 
-        
+      
 
         [HttpPost("create-and-confirm")]
         public async Task<ActionResult<CreateStripePaymentResponseDto>> CreateAndConfirm([FromBody] CreateStripePaymentRequestDto dto)
@@ -79,7 +80,69 @@ namespace SmartTransportation.API.Controllers
             }
         }
 
-       
+        // GET: api/StripePayment
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var payments = await _stripePaymentService.GetAllPaymentsAsync();
+
+                // You can return entities directly, or map to a DTO
+                return Ok(payments.Select(p => new
+                {
+                    p.PaymentId,
+                    p.BookingId,
+                    p.Amount,
+                    p.Currency,
+                    p.Status,
+                    p.StripePaymentIntentId,
+                    p.PaidAt,
+                    p.CreatedAt,
+                    p.LastError
+                }));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error getting payments.", Error = ex.Message });
+            }
+        }
+
+        // GET: api/StripePayment/{paymentId}
+        [HttpGet("{paymentId:int}")]
+        public async Task<IActionResult> GetById(int paymentId)
+        {
+            try
+            {
+                var payment = await _stripePaymentService.GetPaymentByIdAsync(paymentId);
+                if (payment == null)
+                    return NotFound(new { Message = "Payment not found." });
+
+                return Ok(new
+                {
+                    payment.PaymentId,
+                    payment.BookingId,
+                    payment.Amount,
+                    payment.Currency,
+                    payment.Status,
+                    payment.StripePaymentIntentId,
+                    payment.PaidAt,
+                    payment.CreatedAt,
+                    payment.LastError
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // from service if it throws "Payment not found."
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error getting payment.", Error = ex.Message });
+            }
+        }
+
+
     }
 }
 
