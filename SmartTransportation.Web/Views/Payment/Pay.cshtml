@@ -19,7 +19,7 @@
     <input type="hidden" name="BookingId" value="@Model.BookingId" />
     <input type="hidden" id="PaymentMethodId" name="PaymentMethodId" />
 
-    <div id="card-element"><!-- Stripe card element will be inserted here --></div>
+    <div id="card-element"><!-- Stripe card element --></div>
     <div id="card-errors" role="alert" style="color:red;"></div>
 
     <button id="submit-button" type="submit">Pay</button>
@@ -48,7 +48,6 @@
             });
 
             if (error) {
-                // Show error to your customer
                 errorDiv.textContent = error.message;
                 submitButton.disabled = false;
                 return;
@@ -57,7 +56,7 @@
             // Put the PaymentMethodId into hidden field and submit the form
             document.getElementById('PaymentMethodId').value = paymentMethod.id;
 
-            // Now submit the form normally; this will hit the MVC POST /Payment/Pay
+            // now submit to MVC POST /Payment/Pay
             form.submit();
         });
     </script>

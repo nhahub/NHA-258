@@ -25,4 +25,9 @@
     <p style="color:red;">Error: @Model.ErrorMessage</p>
 }
 
+@if (Model.Status == "Succeeded")
+{
+    <p style="color:green;">Platform fee paid successfully.</p>
+}
+
 <a href="@Url.Action("Index", "Home")">Back to Home</a>

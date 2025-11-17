@@ -1,6 +1,6 @@
 ﻿namespace SmartTransportation.Web.Models.Payment
 {
-    public class ConfirmStripePaymentViewModel
+    public class CreateStripePaymentViewModel
     {
         public string ClientSecret { get; set; } = string.Empty;
         public decimal Amount { get; set; }

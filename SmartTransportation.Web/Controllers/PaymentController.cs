@@ -18,8 +18,9 @@ namespace SmartTransportation.Web.Controllers
         public PaymentController(IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _httpClientFactory = httpClientFactory;
-            _apiBaseUrl = config["ApiBaseUrl"] ?? "https://localhost:7004"; 
-            _stripePublishableKey = config["Stripe:PublishableKey"] ?? throw new InvalidOperationException("Stripe publishable key not configured.");
+            _apiBaseUrl = config["ApiBaseUrl"] ?? "https://localhost:5001"; // adjust
+            _stripePublishableKey = config["Stripe:PublishableKey"]
+                ?? throw new InvalidOperationException("Stripe publishable key not configured.");
         }
 
         // GET: /Payment/Pay/5
@@ -31,14 +32,14 @@ namespace SmartTransportation.Web.Controllers
                 BookingId = bookingId,
                 StripePublishableKey = _stripePublishableKey,
                 Currency = "EGP"
-                // Optionally: PlatformFeeAmount = TODO: compute or load via API
+                // Optionally: PlatformFeeAmount = precomputed or from some API
             };
 
             return View(model);
         }
 
         // POST: /Payment/Pay
-        // This receives BookingId + PaymentMethodId from the Stripe.js frontend.
+        // Receives BookingId + PaymentMethodId from the form (Stripe.js created it)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Pay(PaymentRequestViewModel model)
@@ -51,38 +52,40 @@ namespace SmartTransportation.Web.Controllers
 
             var client = _httpClientFactory.CreateClient();
 
-            // This must match your API DTO
             var apiRequest = new
             {
                 bookingId = model.BookingId,
-                paymentMethodId = model.PaymentMethodId
+                paymentMethodId = model.PaymentMethodId   // maps to your API DTO
             };
 
-            var response = await client.PostAsJsonAsync($"{_apiBaseUrl}/api/StripePayment/create-and-confirm", apiRequest);
+            var response = await client.PostAsJsonAsync(
+                $"{_apiBaseUrl}/api/StripePayment/create-and-confirm",
+                apiRequest
+            );
 
             if (!response.IsSuccessStatusCode)
             {
                 var errorText = await response.Content.ReadAsStringAsync();
-                var errorViewModel = new PaymentResultViewModel
+                var errorVm = new PaymentResultViewModel
                 {
                     BookingId = model.BookingId,
                     Status = "Failed",
                     ErrorMessage = errorText
                 };
-                return View("PaymentResult", errorViewModel);
+                return View("PaymentResult", errorVm);
             }
 
             var apiResult = await response.Content.ReadFromJsonAsync<CreateStripePaymentResponseDto>();
 
             if (apiResult == null)
             {
-                var errorViewModel = new PaymentResultViewModel
+                var errorVm = new PaymentResultViewModel
                 {
                     BookingId = model.BookingId,
                     Status = "Failed",
                     ErrorMessage = "Empty response from payment API."
                 };
-                return View("PaymentResult", errorViewModel);
+                return View("PaymentResult", errorVm);
             }
 
             var vm = new PaymentResultViewModel
@@ -98,98 +101,3 @@ namespace SmartTransportation.Web.Controllers
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//using Microsoft.AspNetCore.Mvc;
-//using SmartTransportation.Web.Models;
-//using SmartTransportation.BLL.DTOs.Payment;
-//using SmartTransportation.Web.Models.Payment;
-
-//public class PaymentController : Controller
-//{
-//    private readonly IHttpClientFactory _clientFactory;
-
-//    public PaymentController(IHttpClientFactory clientFactory)
-//    {
-//        _clientFactory = clientFactory;
-//    }
-
-//    [HttpGet]
-//    public IActionResult Pay(int bookingId)
-//    {
-//        return View(new CreateStripePaymentRequestDto { BookingId = bookingId });
-//    }
-
-//    [HttpPost]
-//    public async Task<IActionResult> Pay(CreateStripePaymentRequestDto dto)
-//    {
-//        var client = _clientFactory.CreateClient();
-//        client.BaseAddress = new Uri("https://localhost:5001/"); // API URL
-
-//        var response = await client.PostAsJsonAsync("api/StripePayment/create", dto);
-
-//        if (!response.IsSuccessStatusCode)
-//        {
-//            ModelState.AddModelError("", "Could not create payment");
-//            return View(dto);
-//        }
-
-//        var result = await response.Content.ReadFromJsonAsync<CreateStripePaymentResponseDto>();
-
-//        // Send to payment UI
-//        return RedirectToAction("Confirm", new
-//        {
-//            clientSecret = result.ClientSecret,
-//            amount = result.Amount,
-//            currency = result.Currency,
-//            paymentId = result.PaymentId,
-//            bookingId = dto.BookingId
-//        });
-
-//    }
-
-//    [HttpGet]
-//    public IActionResult Confirm(string clientSecret, decimal amount, string currency, int paymentId, int bookingId)
-//    {
-//        var model = new ConfirmStripePaymentViewModel
-//        {
-//            ClientSecret = clientSecret,
-//            Amount = amount,
-//            Currency = currency,
-//            PaymentId = paymentId,
-//            BookingId = bookingId
-//        };
-
-//        return View(model);
-//    }
-
-//}
