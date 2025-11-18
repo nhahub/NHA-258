@@ -51,7 +51,7 @@ namespace SmartTransportation.Web.Pages
         {
             // Initialize sign up page
         }
-
+        //Function to check if username already exists
         public async Task<JsonResult> OnGetCheckUsername(string userName)
         {
             var apiBase = _configuration["ApiBaseUrl"];
@@ -64,7 +64,7 @@ namespace SmartTransportation.Web.Pages
             var isAvailable = bool.Parse(await response.Content.ReadAsStringAsync());
             return isAvailable ? new JsonResult(true) : new JsonResult("Username already exists");
         }
-
+        //Function to check if email already exists
         public async Task<JsonResult> OnGetCheckEmail(string email)
         {
             var apiBase = _configuration["ApiBaseUrl"];
