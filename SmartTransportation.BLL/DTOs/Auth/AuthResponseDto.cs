@@ -10,4 +10,9 @@ public class AuthResponseDto
 
     [JsonPropertyName("email")]
     public string Email { get; set; } = string.Empty;
+
+
+    [JsonPropertyName("userTypeId")]
+    public int UserTypeId { get; set; }
+
 }

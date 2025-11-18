@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmartTransportation.BLL.DTOs.Auth;
 using System.ComponentModel.DataAnnotations;
 
+
 namespace SmartTransportation.Web.Pages
 {
     public class Sign_UpModel : PageModel
@@ -82,17 +83,37 @@ namespace SmartTransportation.Web.Pages
 
                     if (!string.IsNullOrEmpty(result?.Token))
                     {
-                        // Set JWT cookie
+                        // Set JWT cookie (1 hour expiration for new registrations)
+                        var cookieExpiration = DateTime.UtcNow.AddHours(1);
+
                         Response.Cookies.Append("AuthToken", result.Token, new CookieOptions
                         {
                             HttpOnly = true,
                             Secure = true,
                             SameSite = SameSiteMode.Strict,
-                            Expires = DateTime.UtcNow.AddHours(1)
+                            Expires = cookieExpiration
                         });
 
-                        // Redirect to login page or dashboard
-                        return RedirectToPage("/Log_in");
+                        // Store UserTypeId in cookie for role-based access control
+                        Response.Cookies.Append("UserTypeId", result.UserTypeId.ToString(), new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.Strict,
+                            Expires = cookieExpiration
+                        });
+
+                        // Store UserName for display purposes
+                        Response.Cookies.Append("UserName", result.UserName, new CookieOptions
+                        {
+                            HttpOnly = false, // Allow JavaScript access for display
+                            Secure = true,
+                            SameSite = SameSiteMode.Strict,
+                            Expires = cookieExpiration
+                        });
+
+                        // Redirect based on user type to their respective profile
+                        return RedirectToPage(GetRedirectPageByUserType(result.UserTypeId));
                     }
                     else
                     {
@@ -113,6 +134,21 @@ namespace SmartTransportation.Web.Pages
                 ErrorMessage = $"Registration failed: {ex.Message}";
                 return Page();
             }
+        }
+
+        /// <summary>
+        /// Determines the redirect page based on user type
+        /// UserTypeId: 1 = Admin, 2 = Driver, 3 = Passenger
+        /// </summary>
+        private string GetRedirectPageByUserType(int userTypeId)
+        {
+            return userTypeId switch
+            {
+                1 => "/AdminDashboard", // Admin
+                2 => "/Driver_Profile",    // Driver
+                3 => "/customer-profile",  // Passenger
+                _ => "/Index"              // Default fallback
+            };
         }
     }
 }

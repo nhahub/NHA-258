@@ -25,11 +25,12 @@ namespace SmartTransportation.BLL.Services
 
         public async Task<AuthResultDto> RegisterAsync(RegisterRequestDto model)
         {
-            var emptyResponse = new AuthResponseDto 
-            { 
+            var emptyResponse = new AuthResponseDto
+            {
                 Token = string.Empty,
                 UserName = string.Empty,
-                Email = string.Empty
+                Email = string.Empty,
+                UserTypeId = 0
             };
 
             if (await _context.Users.AnyAsync(u => u.UserName == model.UserName))
@@ -76,20 +77,21 @@ namespace SmartTransportation.BLL.Services
 
         public async Task<AuthResultDto> LoginAsync(LoginRequestDto model)
         {
-            var emptyResponse = new AuthResponseDto 
-            { 
+            var emptyResponse = new AuthResponseDto
+            {
                 Token = string.Empty,
                 UserName = string.Empty,
-                Email = string.Empty
+                Email = string.Empty,
+                UserTypeId = 0
             };
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
 
             if (user == null)
             {
-                return new AuthResultDto 
-                { 
-                    Success = false, 
+                return new AuthResultDto
+                {
+                    Success = false,
                     Message = "Email not found.",
                     Data = emptyResponse
                 };
@@ -97,9 +99,9 @@ namespace SmartTransportation.BLL.Services
 
             if (!BC.Verify(model.Password, user.PasswordHash))
             {
-                return new AuthResultDto 
-                { 
-                    Success = false, 
+                return new AuthResultDto
+                {
+                    Success = false,
                     Message = "Incorrect password.",
                     Data = emptyResponse
                 };
@@ -107,9 +109,9 @@ namespace SmartTransportation.BLL.Services
 
             if (!user.IsActive)
             {
-                return new AuthResultDto 
-                { 
-                    Success = false, 
+                return new AuthResultDto
+                {
+                    Success = false,
                     Message = "User account is not active.",
                     Data = emptyResponse
                 };
@@ -126,11 +128,12 @@ namespace SmartTransportation.BLL.Services
 
         public async Task<AuthResultDto> GoogleLoginAsync(string idToken)
         {
-            var emptyResponse = new AuthResponseDto 
-            { 
+            var emptyResponse = new AuthResponseDto
+            {
                 Token = string.Empty,
                 UserName = string.Empty,
-                Email = string.Empty
+                Email = string.Empty,
+                UserTypeId = 0
             };
 
             try
@@ -144,7 +147,7 @@ namespace SmartTransportation.BLL.Services
                     {
                         UserName = payload.Name.Replace(" ", ""),
                         Email = payload.Email,
-                        PasswordHash = BC.HashPassword(Guid.NewGuid().ToString()), 
+                        PasswordHash = BC.HashPassword(Guid.NewGuid().ToString()),
                         UserTypeId = 3, // Passenger role
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
@@ -207,7 +210,8 @@ namespace SmartTransportation.BLL.Services
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 UserName = user.UserName,
-                Email = user.Email
+                Email = user.Email,
+                UserTypeId = user.UserTypeId  // ← CRITICAL: Include UserTypeId
             };
         }
     }

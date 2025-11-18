@@ -54,16 +54,40 @@ public class Log_InModel : PageModel
 
                 if (!string.IsNullOrEmpty(result?.Token))
                 {
+                    // Determine cookie expiration based on RememberMe
+                    var cookieExpiration = RememberMe
+                        ? DateTime.UtcNow.AddDays(30)
+                        : DateTime.UtcNow.AddHours(1);
+
                     // Set JWT cookie
                     Response.Cookies.Append("AuthToken", result.Token, new CookieOptions
                     {
                         HttpOnly = true,
                         Secure = true,
                         SameSite = SameSiteMode.Strict,
-                        Expires = DateTime.UtcNow.AddHours(1)
+                        Expires = cookieExpiration
                     });
 
-                    return RedirectToPage("/Index"); //// Just 
+                    // Store UserTypeId in cookie for role-based access control
+                    Response.Cookies.Append("UserTypeId", result.UserTypeId.ToString(), new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = cookieExpiration
+                    });
+
+                    // Store UserName for display purposes
+                    Response.Cookies.Append("UserName", result.UserName, new CookieOptions
+                    {
+                        HttpOnly = false, // Allow JavaScript access for display
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = cookieExpiration
+                    });
+
+                    // Redirect based on user type
+                    return RedirectToPage(GetRedirectPageByUserType(result.UserTypeId));
                 }
                 else
                 {
@@ -85,4 +109,18 @@ public class Log_InModel : PageModel
         }
     }
 
+    /// <summary>
+    /// Determines the redirect page based on user type
+    /// UserTypeId: 1 = Passenger, 2 = Driver, 3 = Admin
+    /// </summary>
+    private string GetRedirectPageByUserType(int userTypeId)
+    {
+        return userTypeId switch
+        {
+            1 => "/AdminDashboard",  // Passenger
+            2 => "/Driver_Profile",    // Driver
+            3 => "/customer-profile",    // Admin
+            _ => "/Index"              // Default fallback
+        };
+    }
 }
