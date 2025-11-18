@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmartTransportation.BLL.DTOs.Auth;
 using System.ComponentModel.DataAnnotations;
 
-
 namespace SmartTransportation.Web.Pages
 {
     public class Sign_UpModel : PageModel
@@ -18,12 +17,12 @@ namespace SmartTransportation.Web.Pages
         [BindProperty]
         [Required(ErrorMessage = "Username is required")]
         [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]
-        public string UserName { get; set; } = string.Empty;
+        public string UserName { get; set; }
 
         [BindProperty]
         [Required(ErrorMessage = "Email is required")]
         [EmailAddress(ErrorMessage = "Invalid email address")]
-        public string Email { get; set; } = string.Empty;
+        public string Email { get; set; }
 
         [BindProperty]
         [Required(ErrorMessage = "Password is required")]
@@ -53,6 +52,32 @@ namespace SmartTransportation.Web.Pages
             // Initialize sign up page
         }
 
+        public async Task<JsonResult> OnGetCheckUsername(string userName)
+        {
+            var apiBase = _configuration["ApiBaseUrl"];
+            using var client = new HttpClient();
+            var response = await client.GetAsync($"{apiBase}/api/auth/check-username?username={userName}");
+
+            if (!response.IsSuccessStatusCode)
+                return new JsonResult("Error contacting server");
+
+            var isAvailable = bool.Parse(await response.Content.ReadAsStringAsync());
+            return isAvailable ? new JsonResult(true) : new JsonResult("Username already exists");
+        }
+
+        public async Task<JsonResult> OnGetCheckEmail(string email)
+        {
+            var apiBase = _configuration["ApiBaseUrl"];
+            using var client = new HttpClient();
+            var response = await client.GetAsync($"{apiBase}/api/auth/check-email?email={email}");
+
+            if (!response.IsSuccessStatusCode)
+                return new JsonResult("Error contacting server");
+
+            var isAvailable = bool.Parse(await response.Content.ReadAsStringAsync());
+            return isAvailable ? new JsonResult(true) : new JsonResult("Email already exists");
+        }
+
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid)
@@ -66,24 +91,19 @@ namespace SmartTransportation.Web.Pages
                 UserTypeId = UserTypeId
             };
 
-            // Get API base URL from configuration
             var apiBaseUrl = _configuration["ApiBaseUrl"];
-
             using var client = new HttpClient();
 
             try
             {
-                // Call the register API
                 var response = await client.PostAsJsonAsync($"{apiBaseUrl}/api/auth/register", registerDto);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    // Deserialize the response
                     var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>();
 
                     if (!string.IsNullOrEmpty(result?.Token))
                     {
-                        // Set JWT cookie (1 hour expiration for new registrations)
                         var cookieExpiration = DateTime.UtcNow.AddHours(1);
 
                         Response.Cookies.Append("AuthToken", result.Token, new CookieOptions
@@ -94,7 +114,6 @@ namespace SmartTransportation.Web.Pages
                             Expires = cookieExpiration
                         });
 
-                        // Store UserTypeId in cookie for role-based access control
                         Response.Cookies.Append("UserTypeId", result.UserTypeId.ToString(), new CookieOptions
                         {
                             HttpOnly = true,
@@ -103,31 +122,24 @@ namespace SmartTransportation.Web.Pages
                             Expires = cookieExpiration
                         });
 
-                        // Store UserName for display purposes
                         Response.Cookies.Append("UserName", result.UserName, new CookieOptions
                         {
-                            HttpOnly = false, // Allow JavaScript access for display
+                            HttpOnly = false,
                             Secure = true,
                             SameSite = SameSiteMode.Strict,
                             Expires = cookieExpiration
                         });
 
-                        // Redirect based on user type to their respective profile
                         return RedirectToPage(GetRedirectPageByUserType(result.UserTypeId));
                     }
-                    else
-                    {
-                        ErrorMessage = "Registration failed. Please try again.";
-                        return Page();
-                    }
-                }
-                else
-                {
-                    // Read error message from API response
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    ErrorMessage = $"Registration failed: {errorContent}";
+
+                    ErrorMessage = "Registration failed. Please try again.";
                     return Page();
                 }
+
+                var errorContent = await response.Content.ReadAsStringAsync();
+                ErrorMessage = $"Registration failed: {errorContent}";
+                return Page();
             }
             catch (Exception ex)
             {
@@ -136,18 +148,14 @@ namespace SmartTransportation.Web.Pages
             }
         }
 
-        /// <summary>
-        /// Determines the redirect page based on user type
-        /// UserTypeId: 1 = Admin, 2 = Driver, 3 = Passenger
-        /// </summary>
         private string GetRedirectPageByUserType(int userTypeId)
         {
             return userTypeId switch
             {
-                1 => "/AdminDashboard", // Admin
-                2 => "/Driver_Profile",    // Driver
-                3 => "/customer-profile",  // Passenger
-                _ => "/Index"              // Default fallback
+                1 => "/AdminDashboard",
+                2 => "/Driver_Profile",
+                3 => "/customer-profile",
+                _ => "/Index"
             };
         }
     }

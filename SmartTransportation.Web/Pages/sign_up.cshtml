@@ -399,5 +399,43 @@
           passwordInput.setAttribute('type', type);
         }
     </script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+
+            // Username validation
+            $("#UserName").on("blur", function() {
+                let val = $(this).val();
+                if (!val) return;
+
+                $.get("@Url.Page("Sign_Up", "CheckUsername")", { userName: val })
+                 .done(function(res) {
+                    if(res === true) {
+                        $("#UserName").next(".text-danger").text("");
+                    } else {
+                        $("#UserName").next(".text-danger").text(res);
+                    }
+                 });
+            });
+
+            // Email validation
+            $("#Email").on("blur", function() {
+                let val = $(this).val();
+                if (!val) return;
+
+                $.get("@Url.Page("Sign_Up", "CheckEmail")", { email: val })
+                 .done(function(res) {
+                    if(res === true) {
+                        $("#Email").next(".text-danger").text("");
+                    } else {
+                        $("#Email").next(".text-danger").text(res);
+                    }
+                 });
+            });
+
+        });
+    </script>
+
 </body>
 </html>
