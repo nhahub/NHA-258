@@ -185,6 +185,26 @@ namespace SmartTransportation.BLL.Services
 
             return payment;
         }
+
+        public async Task<IEnumerable<Payment>> GetPaymentsByPassengerIdAsync(int passengerId)
+        {
+            // 1) Get bookings for that passenger
+            var bookingsForPassenger = await _unitOfWork.Bookings
+                .FindAsync(b => b.BookerUserId == passengerId);
+
+            var bookingIds = bookingsForPassenger
+                .Select(b => b.BookingId)
+                .ToList();
+
+            if (!bookingIds.Any())
+                return Enumerable.Empty<Payment>();
+
+            // 2) Get payments whose BookingId is in that list
+            var payments = await _unitOfWork.Payments
+                .FindAsync(p => bookingIds.Contains(p.BookingId));
+
+            return payments;
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 using SmartTransportation.BLL.DTOs.Payment;
 using SmartTransportation.BLL.Services;
 using SmartTransportation.DAL.Models;
+using SmartTransportation.DAL.Repositories.UnitOfWork;
 using System;
 using System.Threading.Tasks;
 
@@ -141,6 +142,42 @@ namespace SmartTransportation.API.Controllers
                 return StatusCode(500, new { Message = "Error getting payment.", Error = ex.Message });
             }
         }
+
+
+
+        // GET: api/StripePayment/passenger/{passengerId}
+        [HttpGet("passenger/{passengerId:int}")]
+        public async Task<IActionResult> GetByPassengerId(int passengerId)
+        {
+            try
+            {
+                var payments = await _stripePaymentService.GetPaymentsByPassengerIdAsync(passengerId);
+
+                // We'll include PassengerId in the DTO using the Booking join
+                // To avoid another DB hit per payment, you can pre-load bookings in service,
+                // but for simplicity we'll just leave PassengerId null or do a minimal join.
+
+                var dtoList = payments.Select(p => new PaymentResponseDto
+                {
+                    PaymentId = p.PaymentId,
+                    BookingId = p.BookingId,
+                    Amount = p.Amount,
+                    Currency = p.Currency,
+                    Status = p.Status,
+                    PaidAt = p.PaidAt,
+                    // We already filtered by passengerId in service, so we know which one it is:
+                    PassengerId = passengerId
+                }).ToList();
+
+                return Ok(dtoList);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error getting payments by passenger.", Error = ex.Message });
+            }
+        }
+
+
 
 
     }

@@ -22,18 +22,24 @@ namespace SmartTransportation.Web.Pages.Payment
         // Read from query string on GET
         [BindProperty(SupportsGet = true)]
         public int BookingId { get; set; }
+
         // Filled from hidden input when Stripe creates PaymentMethod
         [BindProperty]
         public string PaymentMethodId { get; set; }
+
         // For showing result UI
         [BindProperty]
         public string ResultStatus { get; set; }
+
         [BindProperty]
         public string ResultMessage { get; set; }
-        // For redirect after success
+
+        // For optional redirect after success
         public string RedirectUrl { get; set; }
+
         // Stripe publishable key for JS
         public string StripePublishableKey => _config["Stripe:PublishableKey"];
+
         public void OnGet(int bookingId)
         {
             BookingId = bookingId;
@@ -85,7 +91,8 @@ namespace SmartTransportation.Web.Pages.Payment
                 ResultStatus = "Succeeded";
 
                 // where you want to send them after success
-                RedirectUrl = Url.Page("/Bookings/Index"); // change to your real bookings page
+                RedirectUrl = Url.Page("/customer-profile");
+
                 return Page();
             }
 
@@ -96,7 +103,7 @@ namespace SmartTransportation.Web.Pages.Payment
             return Page();
         }
 
-        // Local DTO matching API response
+        // Local DTO matching your API response
         private class CreateStripePaymentResponseDto
         {
             public int PaymentId { get; set; }
