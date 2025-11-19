@@ -13,7 +13,7 @@ namespace SmartTransportation.BLL.Interfaces
         Task<TripDetailsDTO> StartTripAsync(int tripId);
         Task<TripDetailsDTO> CompleteTripAsync(int tripId);
 
-        Task<List<TripSearchResultDTO>> SearchTripsAsync(
+        Task<List<TripSearchResultDto>> SearchTripsAsync(
             string? from,
             string? to,
             DateTime? date,

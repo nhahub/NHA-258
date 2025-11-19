@@ -19,10 +19,7 @@ namespace SmartTransportation.Controllers
             _tripService = tripService;
         }
 
-        // =======================================
-        // ⭐ PUBLIC SEARCH ENDPOINT (used by Web)
-        // GET: api/trips/search?from=..&to=..&date=..&passengers=..
-        // =======================================
+       
         [HttpGet("search")]
         [AllowAnonymous]
         public async Task<IActionResult> SearchTrips(
@@ -65,7 +62,7 @@ namespace SmartTransportation.Controllers
         // GET: api/Trips/paged
         // =======================================
         [HttpGet("paged")]
-        [Authorize]
+       // [Authorize]
         public async Task<ActionResult<PagedResult<TripDetailsDTO>>> GetPagedTrips(
             [FromQuery] string? search,
             [FromQuery] int pageNumber = 1,
@@ -79,7 +76,7 @@ namespace SmartTransportation.Controllers
         // POST: api/Trips (Driver/Admin only)
         // =======================================
         [HttpPost]
-        [Authorize(Roles = "Driver,Admin")]
+        //[Authorize(Roles = "Driver,Admin")]
         public async Task<IActionResult> CreateTrip([FromBody] CreateTripDTO tripDto)
         {
             if (!ModelState.IsValid)

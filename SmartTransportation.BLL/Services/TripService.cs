@@ -122,60 +122,73 @@ namespace SmartTransportation.BLL.Services
             };
         }
 
-        public async Task<List<TripSearchResultDTO>> SearchTripsAsync(
-    string? from,
-    string? to,
-    DateTime? date,
-    int passengers)
+        public async Task<List<TripSearchResultDto>> SearchTripsAsync(
+             string? from,
+            string? to,
+            DateTime? date,
+            int passengers)
         {
+            // Get trips with all needed navigation properties
             var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(
                 t =>
-                    (string.IsNullOrWhiteSpace(from) ||
-                     (t.Route != null &&
-                      t.Route.StartLocation.Contains(from))) &&
-
-                    (string.IsNullOrWhiteSpace(to) ||
-                     (t.Route != null &&
-                      t.Route.EndLocation.Contains(to))) &&
-
+                    (string.IsNullOrWhiteSpace(from) || t.Route.StartLocation.Contains(from)) &&
+                    (string.IsNullOrWhiteSpace(to) || t.Route.EndLocation.Contains(to)) &&
                     (!date.HasValue || t.StartTime.Date == date.Value.Date) &&
-
                     (passengers <= 0 || t.AvailableSeats >= passengers),
 
                 pageNumber: 1,
                 pageSize: 1000,
-                orderBy: q => q.OrderBy(t => t.StartTime)
+                orderBy: q => q.OrderBy(t => t.StartTime),
+                t => t.Bookings,
+                t => t.Driver,
+                t => t.Driver.UserProfile,
+                t => t.Driver.Vehicles,
+                t => t.Route,
+                t => t.Ratings
             );
 
             var trips = pagedTrips.Items;
 
-            return trips.Select(t => new TripSearchResultDTO
+            var result = trips.Select(t =>
             {
-                TripId = t.TripId,
+                var driver = t.Driver;
+                var driverVehicle = driver?.Vehicles.FirstOrDefault(v => v.IsVerified);
 
-                FromLocation = t.Route?.StartLocation ?? "",
-                ToLocation = t.Route?.EndLocation ?? "",
+                // Calculate driver rating across all trips
+                double driverRating = 0;
+                int totalReviews = 0;
 
-                DepartureDate = t.StartTime.Date,
-                DepartureTime = t.StartTime.ToString("HH:mm"),
+                if (driver != null)
+                {
+                    var allRatings = driver.Trips
+                                           .SelectMany(tr => tr.Ratings)
+                                           .Where(r => r.Score.HasValue)
+                                           .ToList();
 
-                MaxPassengers = t.AvailableSeats,
-                AvailableSeats = t.AvailableSeats,
+                    totalReviews = allRatings.Count;
+                    driverRating = totalReviews > 0 ? allRatings.Average(r => r.Score.Value) : 0;
+                }
 
-                Price = t.PricePerSeat,
-
-                VehicleType = string.Empty,
-
-                DriverName = t.Driver != null
-                    ? $"{t.Driver.UserProfile.FullName}"
-                    : "",
-
-                DriverRating = 0,
-                TotalReviews = 0
-
+                return new TripSearchResultDto
+                {
+                    TripId = t.TripId,
+                    FromLocation = t.Route?.StartLocation ?? "",
+                    ToLocation = t.Route?.EndLocation ?? "",
+                    DepartureDate = t.StartTime.Date,
+                    DepartureTime = t.StartTime.ToString("HH:mm"),
+                    MaxPassengers = t.AvailableSeats,
+                    AvailableSeats = t.AvailableSeats,
+                    NumberOfBookings = t.Bookings?.Count() ?? 0,
+                    Price = t.PricePerSeat,
+                    VehicleType = driverVehicle != null ? $"{driverVehicle.VehicleMake} {driverVehicle.VehicleModel}" : "",
+                    DriverName = driver?.UserProfile?.FullName ?? "",
+                    DriverRating = driverRating,
+                    TotalReviews = totalReviews
+                };
             }).ToList();
-        }
 
+            return result;
+        }
 
 
     }

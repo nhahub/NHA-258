@@ -9,6 +9,7 @@ namespace SmartTransportation.DAL.Repositories.Generic
     public interface IGenericRepository<T> where T : class
     {
         Task<IEnumerable<T>> GetAllAsync();
+        IQueryable<T> GetQueryable();
         Task<T> GetByIdAsync(int id);
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
         Task AddAsync(T entity);
@@ -20,9 +21,11 @@ namespace SmartTransportation.DAL.Repositories.Generic
 
         // ⭐ Paged result
         Task<PagedResult<T>> GetPagedAsync(
-            Expression<Func<T, bool>> filter,
-            int pageNumber,
-            int pageSize,
-            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null);
+          Expression<Func<T, bool>> filter,
+          int pageNumber,
+          int pageSize,
+          Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+          params Expression<Func<T, object>>[] includeProperties
+      );
     }
 }

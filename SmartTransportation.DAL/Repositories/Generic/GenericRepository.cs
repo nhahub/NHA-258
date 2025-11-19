@@ -20,6 +20,13 @@ namespace SmartTransportation.DAL.Repositories.Generic
         }
 
         public async Task<IEnumerable<T>> GetAllAsync() => await _dbSet.ToListAsync();
+
+        public IQueryable<T> GetQueryable()
+        {
+            return _dbSet.AsQueryable();
+        }
+
+
         public async Task<T> GetByIdAsync(int id) => await _dbSet.FindAsync(id);
         public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate) => await _dbSet.Where(predicate).ToListAsync();
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
@@ -32,15 +39,27 @@ namespace SmartTransportation.DAL.Repositories.Generic
         }
 
         public async Task<PagedResult<T>> GetPagedAsync(
-            Expression<Func<T, bool>> filter,
-            int pageNumber,
-            int pageSize,
-            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null)
+    Expression<Func<T, bool>> filter,
+    int pageNumber,
+    int pageSize,
+    Func<IQueryable<T>, IOrderedQueryable<T>> orderBy = null,
+    params Expression<Func<T, object>>[] includeProperties)
         {
             IQueryable<T> query = _dbSet;
 
-            if (filter != null) query = query.Where(filter);
-            if (orderBy != null) query = orderBy(query);
+            if (filter != null)
+                query = query.Where(filter);
+
+            if (includeProperties != null)
+            {
+                foreach (var includeProperty in includeProperties)
+                {
+                    query = query.Include(includeProperty);
+                }
+            }
+
+            if (orderBy != null)
+                query = orderBy(query);
 
             int totalCount = await query.CountAsync();
 
@@ -57,6 +76,8 @@ namespace SmartTransportation.DAL.Repositories.Generic
                 PageSize = pageSize
             };
         }
-    }
 
+    }
 }
+
+
