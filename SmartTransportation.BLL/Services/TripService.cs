@@ -121,5 +121,62 @@ namespace SmartTransportation.BLL.Services
                 PageSize = pagedTrips.PageSize
             };
         }
+
+        public async Task<List<TripSearchResultDTO>> SearchTripsAsync(
+    string? from,
+    string? to,
+    DateTime? date,
+    int passengers)
+        {
+            var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(
+                t =>
+                    (string.IsNullOrWhiteSpace(from) ||
+                     (t.Route != null &&
+                      t.Route.StartLocation.Contains(from))) &&
+
+                    (string.IsNullOrWhiteSpace(to) ||
+                     (t.Route != null &&
+                      t.Route.EndLocation.Contains(to))) &&
+
+                    (!date.HasValue || t.StartTime.Date == date.Value.Date) &&
+
+                    (passengers <= 0 || t.AvailableSeats >= passengers),
+
+                pageNumber: 1,
+                pageSize: 1000,
+                orderBy: q => q.OrderBy(t => t.StartTime)
+            );
+
+            var trips = pagedTrips.Items;
+
+            return trips.Select(t => new TripSearchResultDTO
+            {
+                TripId = t.TripId,
+
+                FromLocation = t.Route?.StartLocation ?? "",
+                ToLocation = t.Route?.EndLocation ?? "",
+
+                DepartureDate = t.StartTime.Date,
+                DepartureTime = t.StartTime.ToString("HH:mm"),
+
+                MaxPassengers = t.AvailableSeats,
+                AvailableSeats = t.AvailableSeats,
+
+                Price = t.PricePerSeat,
+
+                VehicleType = string.Empty,
+
+                DriverName = t.Driver != null
+                    ? $"{t.Driver.UserProfile.FullName}"
+                    : "",
+
+                DriverRating = 0,
+                TotalReviews = 0
+
+            }).ToList();
+        }
+
+
+
     }
 }

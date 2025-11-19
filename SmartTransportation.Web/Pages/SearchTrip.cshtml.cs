@@ -62,7 +62,7 @@ namespace SmartTransportation.Web.Pages
             {
                 new TripSearchResult
                 {
-                    TripId = 1,
+                    TripId = 1, 
                     FromLocation = "Cairo",
                     ToLocation = "Alexandria",
                     DepartureDate = DateTime.Now.AddDays(1),
