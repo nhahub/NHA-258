@@ -1,25 +1,25 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Google.Apis.Auth;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using SmartTransportation.BLL.DTOs.Auth;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models;
+using SmartTransportation.DAL.Repositories.UnitOfWork;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using System.Text;
-using Google.Apis.Auth;
 using BC = BCrypt.Net.BCrypt;
 
 namespace SmartTransportation.BLL.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly TransportationContext _context;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IConfiguration _config;
 
-        public AuthService(TransportationContext context, IConfiguration config)
+        public AuthService(IUnitOfWork unitOfWork, IConfiguration config)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
             _config = config;
         }
 
@@ -33,7 +33,8 @@ namespace SmartTransportation.BLL.Services
                 UserTypeId = 0
             };
 
-            if (await _context.Users.AnyAsync(u => u.UserName == model.UserName))
+            // Use repository method
+            if (await _unitOfWork.Users.GetByUserNameAsync(model.UserName) != null)
             {
                 return new AuthResultDto
                 {
@@ -43,7 +44,7 @@ namespace SmartTransportation.BLL.Services
                 };
             }
 
-            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
+            if (await _unitOfWork.Users.GetByEmailAsync(model.Email) != null)
             {
                 return new AuthResultDto
                 {
@@ -63,8 +64,8 @@ namespace SmartTransportation.BLL.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            await _unitOfWork.Users.AddAsync(user);
+            await _unitOfWork.SaveAsync();
 
             var token = GenerateJwtToken(user);
             return new AuthResultDto
@@ -85,45 +86,20 @@ namespace SmartTransportation.BLL.Services
                 UserTypeId = 0
             };
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            // Use repository method
+            var user = await _unitOfWork.Users.GetByEmailAsync(model.Email);
 
             if (user == null)
-            {
-                return new AuthResultDto
-                {
-                    Success = false,
-                    Message = "Email not found.",
-                    Data = emptyResponse
-                };
-            }
+                return new AuthResultDto { Success = false, Message = "Email not found.", Data = emptyResponse };
 
             if (!BC.Verify(model.Password, user.PasswordHash))
-            {
-                return new AuthResultDto
-                {
-                    Success = false,
-                    Message = "Incorrect password.",
-                    Data = emptyResponse
-                };
-            }
+                return new AuthResultDto { Success = false, Message = "Incorrect password.", Data = emptyResponse };
 
             if (!user.IsActive)
-            {
-                return new AuthResultDto
-                {
-                    Success = false,
-                    Message = "User account is not active.",
-                    Data = emptyResponse
-                };
-            }
+                return new AuthResultDto { Success = false, Message = "User account is not active.", Data = emptyResponse };
 
             var token = GenerateJwtToken(user);
-            return new AuthResultDto
-            {
-                Success = true,
-                Message = "Login successful.",
-                Data = token
-            };
+            return new AuthResultDto { Success = true, Message = "Login successful.", Data = token };
         }
 
         public async Task<AuthResultDto> GoogleLoginAsync(string idToken)
@@ -139,7 +115,7 @@ namespace SmartTransportation.BLL.Services
             try
             {
                 var payload = await GoogleJsonWebSignature.ValidateAsync(idToken);
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == payload.Email);
+                var user = await _unitOfWork.Users.GetByEmailAsync(payload.Email);
 
                 if (user == null)
                 {
@@ -148,13 +124,13 @@ namespace SmartTransportation.BLL.Services
                         UserName = payload.Name.Replace(" ", ""),
                         Email = payload.Email,
                         PasswordHash = BC.HashPassword(Guid.NewGuid().ToString()),
-                        UserTypeId = 3, // Passenger role
+                        UserTypeId = 3,
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    _context.Users.Add(user);
-                    await _context.SaveChangesAsync();
+                    await _unitOfWork.Users.AddAsync(user);
+                    await _unitOfWork.SaveAsync();
                 }
 
                 var token = GenerateJwtToken(user);
@@ -176,7 +152,7 @@ namespace SmartTransportation.BLL.Services
             }
         }
 
-        // Generate JWT token (shared)
+        // Generate JWT token
         private AuthResponseDto GenerateJwtToken(User user)
         {
             var jwt = _config.GetSection("Jwt");
@@ -211,7 +187,7 @@ namespace SmartTransportation.BLL.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 UserName = user.UserName,
                 Email = user.Email,
-                UserTypeId = user.UserTypeId  // ← CRITICAL: Include UserTypeId
+                UserTypeId = user.UserTypeId
             };
         }
     }

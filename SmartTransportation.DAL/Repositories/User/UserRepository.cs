@@ -7,16 +7,25 @@ namespace SmartTransportation.DAL.Repositories
 {
     public class UserRepository : GenericRepository<User>, IUserRepository
     {
-        public UserRepository(TransportationContext context) : base(context) { }
+        private readonly TransportationContext _context;
 
-        public async Task<User> GetByEmailAsync(string email)
+        public UserRepository(TransportationContext context) : base(context)
         {
-            return await _dbSet.FirstOrDefaultAsync(u => u.Email == email);
+            _context = context;
         }
 
+        // Get a user by email (async)
+        public async Task<User> GetByEmailAsync(string email)
+        {
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
+        // Get a user by username (async)
         public async Task<User> GetByUserNameAsync(string username)
         {
-            return await _dbSet.FirstOrDefaultAsync(u => u.UserName == username);
+            return await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName == username);
         }
     }
 }
