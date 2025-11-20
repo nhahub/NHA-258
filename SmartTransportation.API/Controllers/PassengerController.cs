@@ -19,7 +19,7 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // -------------------------------
-        // Helper: get current user ID from JWT
+        // Helper: get current user ID from JWT Aim: Passenger
         // -------------------------------
         private int? GetCurrentUserId()
         {
