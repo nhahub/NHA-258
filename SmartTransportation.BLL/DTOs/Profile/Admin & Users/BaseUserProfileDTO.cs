@@ -8,7 +8,9 @@ namespace SmartTransportation.BLL.DTOs.Profile
 {
     public class BaseUserProfileDTO
     {
-       // public int UserId { get; set; }
+        /// <summary>
+        /// public int UserId { get; set; }
+        /// </summary>
         public string? FullName { get; set; }
         public string? Phone { get; set; }
 
