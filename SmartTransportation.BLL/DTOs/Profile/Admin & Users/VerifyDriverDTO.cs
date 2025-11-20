@@ -8,7 +8,7 @@ namespace SmartTransportation.BLL.DTOs.Profile
 {
     public class VerifyDriverDTO
     {
-        public int UserId { get; set; }
+        public int DriverId { get; set; }
         public bool IsDriverVerified { get; set; }
     }
 
