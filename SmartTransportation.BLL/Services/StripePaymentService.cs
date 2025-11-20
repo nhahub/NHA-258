@@ -6,11 +6,13 @@ using Stripe;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace SmartTransportation.BLL.Services
 {
     public class StripePaymentService
     {
+        private readonly decimal _pricePerKm;
         private readonly IUnitOfWork _unitOfWork;
         private readonly string _currency;
         private const decimal PlatformFeePercent = 0.05m; // 5%
@@ -21,6 +23,7 @@ namespace SmartTransportation.BLL.Services
 
             StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
             _currency = config["Stripe:Currency"] ?? "EGP";
+            _pricePerKm = config.GetValue<decimal>("PaymentSettings:PricePerKm");
         }
 
 
@@ -42,34 +45,70 @@ namespace SmartTransportation.BLL.Services
 
 
         // Create PaymentIntent only
+        // Create PaymentIntent only
         public async Task<(Payment payment, string clientSecret)> CreatePaymentIntentAsync(int bookingId)
         {
+            // 1) Load booking
             var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId);
             if (booking == null)
                 throw new InvalidOperationException("Booking not found.");
 
+            // 2) Recalculate TotalAmount from booked segments (distance * pricePerKm * seats)
+            //    If there are no segments, we just keep whatever TotalAmount is already stored.
+            var bookingSegments = await _unitOfWork.BookingSegments
+                .FindAsync(bs => bs.BookingId == bookingId);
+
+            if (bookingSegments.Any())
+            {
+                var segmentIds = bookingSegments
+                    .Select(bs => bs.SegmentId)
+                    .Distinct()
+                    .ToList();
+
+                var segments = await _unitOfWork.RouteSegments
+                    .FindAsync(rs => segmentIds.Contains(rs.SegmentId));
+
+                var totalDistanceKm = segments.Sum(s => s.DistanceKm ?? 0m);
+
+                if (totalDistanceKm <= 0)
+                    throw new InvalidOperationException("Total distance for booking segments is zero. Cannot calculate fare.");
+
+                if (_pricePerKm <= 0)
+                    throw new InvalidOperationException("PricePerKm is not configured correctly in appsettings.");
+
+                var totalAmount = Math.Round(totalDistanceKm * _pricePerKm * booking.SeatsCount, 2);
+
+                // Save recalculated total onto booking
+                booking.TotalAmount = totalAmount;
+                _unitOfWork.Bookings.Update(booking);
+                await _unitOfWork.SaveAsync();
+            }
+
+            // 3) Validate TotalAmount
             if (booking.TotalAmount <= 0)
                 throw new InvalidOperationException("Booking total amount must be greater than 0.");
 
             var totalFare = booking.TotalAmount;
-            var platformFee = Math.Round(totalFare * PlatformFeePercent, 2);
 
+            // 4) Calculate 5% platform fee
+            var platformFee = Math.Round(totalFare * PlatformFeePercent, 2);
             if (platformFee <= 0)
                 throw new InvalidOperationException("Calculated platform fee must be greater than 0.");
 
-            var amountInMinor = (long)(platformFee * 100); // Stripe uses cents
+            var amountInMinor = (long)(platformFee * 100); // Stripe uses smallest currency unit
 
+            // 5) Create Stripe PaymentIntent
             var service = new PaymentIntentService();
             var options = new PaymentIntentCreateOptions
             {
                 Amount = amountInMinor,
                 Currency = _currency.ToLower(),
                 Metadata = new Dictionary<string, string>
-                {
-                    { "BookingId", booking.BookingId.ToString() },
-                    { "TotalFare", totalFare.ToString("F2") },
-                    { "PlatformFee", platformFee.ToString("F2") }
-                },
+        {
+            { "BookingId", booking.BookingId.ToString() },
+            { "TotalFare", totalFare.ToString("F2") },
+            { "PlatformFee", platformFee.ToString("F2") }
+        },
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
                     Enabled = true,
@@ -79,6 +118,7 @@ namespace SmartTransportation.BLL.Services
 
             var intent = await service.CreateAsync(options);
 
+            // 6) Store Payment (for the platform fee only)
             var payment = new Payment
             {
                 BookingId = booking.BookingId,
@@ -94,6 +134,7 @@ namespace SmartTransportation.BLL.Services
 
             return (payment, intent.ClientSecret);
         }
+
 
 
         // Confirm payment (success or failed)

@@ -122,11 +122,7 @@ namespace SmartTransportation.BLL.Services
             };
         }
 
-        public async Task<List<TripSearchResultDto>> SearchTripsAsync(
-     string? from,
-     string? to,
-     DateTime? date,
-     int passengers)
+        public async Task<List<TripSearchResultDto>> SearchTripsAsync(string? from,string? to,DateTime? date,int passengers)
         {
             // 1) Load trips matching the filters
             var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(

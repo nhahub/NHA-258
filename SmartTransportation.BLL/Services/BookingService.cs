@@ -74,9 +74,10 @@ namespace SmartTransportation.BLL.Services
                 BookingDate = DateTime.UtcNow,
                 BookingStatus = "Pending",
                 PaymentStatus = "Pending",
-                TotalAmount = createDto.TotalAmount,
+                TotalAmount = 0m,
                 SeatsCount = createDto.SeatsCount
             };
+
 
             await _unitOfWork.Bookings.AddAsync(booking);
             await _unitOfWork.SaveAsync();

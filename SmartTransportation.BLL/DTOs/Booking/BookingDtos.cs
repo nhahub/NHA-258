@@ -49,7 +49,6 @@ namespace SmartTransportation.BLL.DTOs.Booking
         public int TripId { get; set; }
         public int BookerUserId { get; set; }
         public int SeatsCount { get; set; }
-        public decimal TotalAmount { get; set; }
         public List<int>? PassengerUserIds { get; set; }
         public List<int>? SegmentIds { get; set; }
     }
