@@ -64,7 +64,6 @@ builder.Services.AddHttpClient();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddCorsPolicy();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddAutoMapper(typeof(Program)); // or the assembly containing your profiles
 
 // If you have a concrete implementation called DriverService
 builder.Services.AddScoped<IDriverService, DriverService>();
