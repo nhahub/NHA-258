@@ -8,7 +8,10 @@ namespace SmartTransportation.BLL.Interfaces
     {
         Task<BaseUserProfileDTO> GetByUserIdAsync(int userId);
         Task<IEnumerable<BaseUserProfileDTO>> GetAllAsync();
-        Task<BaseUserProfileDTO> CreateAsync(CreateUserProfileDTO dto);
+
+        // Add userId parameter for CreateAsync
+        Task<BaseUserProfileDTO> CreateAsync(CreateUserProfileDTO dto, int userId);
+
         Task<BaseUserProfileDTO> UpdateAsync(int userId, UpdateUserProfileDTO dto);
     }
 }
