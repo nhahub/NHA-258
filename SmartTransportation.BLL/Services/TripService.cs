@@ -123,12 +123,12 @@ namespace SmartTransportation.BLL.Services
         }
 
         public async Task<List<TripSearchResultDto>> SearchTripsAsync(
-             string? from,
-            string? to,
-            DateTime? date,
-            int passengers)
+     string? from,
+     string? to,
+     DateTime? date,
+     int passengers)
         {
-            // Get trips with all needed navigation properties
+            // 1) Load trips matching the filters
             var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(
                 t =>
                     (string.IsNullOrWhiteSpace(from) || t.Route.StartLocation.Contains(from)) &&
@@ -139,49 +139,102 @@ namespace SmartTransportation.BLL.Services
                 pageNumber: 1,
                 pageSize: 1000,
                 orderBy: q => q.OrderBy(t => t.StartTime),
+
+                // Includes
                 t => t.Bookings,
                 t => t.Driver,
                 t => t.Driver.UserProfile,
                 t => t.Driver.Vehicles,
-                t => t.Route,
-                t => t.Ratings
+                t => t.Route
             );
 
             var trips = pagedTrips.Items;
 
+            if (!trips.Any())
+                return new List<TripSearchResultDto>();
+
+            // ---------------------------------------------------------
+            // 2) Collect all drivers from these trips
+            // ---------------------------------------------------------
+            var driverIds = trips
+                .Select(t => t.DriverId)
+                .Distinct()
+                .ToList();
+
+            // ---------------------------------------------------------
+            // 3) Get ALL ratings for ALL those drivers' trips
+            // ---------------------------------------------------------
+            var allDriverRatings = await _unitOfWork.Ratings.GetForDriversAsync(driverIds);
+
+            // ---------------------------------------------------------
+            // 4) Group ratings by DriverId (overall driver rating)
+            // ---------------------------------------------------------
+            var ratingLookup = allDriverRatings
+                .GroupBy(r => r.Trip.DriverId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        Average = g.Average(r => r.Score!.Value),
+                        Count = g.Count()
+                    }
+                );
+
+            // ---------------------------------------------------------
+            // 5) Map to DTO
+            // ---------------------------------------------------------
             var result = trips.Select(t =>
             {
                 var driver = t.Driver;
-                var driverVehicle = driver?.Vehicles.FirstOrDefault(v => v.IsVerified);
+                var driverProfile = driver?.UserProfile;
 
-                // Calculate driver rating across all trips
+                // Select vehicle (prefer verified)
+                var vehicle =
+                    driver?.Vehicles.FirstOrDefault(v => v.IsVerified)
+                    ?? driver?.Vehicles.FirstOrDefault();
+
+                // Max seats = vehicle seats if exists
+                var maxPassengers = vehicle?.SeatsCount ?? t.AvailableSeats;
+
+                // Fetch overall rating from lookup
                 double driverRating = 0;
                 int totalReviews = 0;
 
-                if (driver != null)
+                if (ratingLookup.TryGetValue(t.DriverId, out var stats))
                 {
-                    var allRatings = driver.Trips
-                                           .SelectMany(tr => tr.Ratings)
-                                           .Where(r => r.Score.HasValue)
-                                           .ToList();
-
-                    totalReviews = allRatings.Count;
-                    driverRating = totalReviews > 0 ? allRatings.Average(r => r.Score.Value) : 0;
+                    driverRating = stats.Average;
+                    totalReviews = stats.Count;
                 }
+
+                // Driver name safely
+                var driverName = string.IsNullOrWhiteSpace(driverProfile?.FullName)
+                    ? "Unknown Driver"
+                    : driverProfile.FullName;
+
+                // Vehicle type text
+                var vehicleType = vehicle != null
+                    ? $"{vehicle.VehicleMake} {vehicle.VehicleModel}"
+                    : "Unknown Vehicle";
 
                 return new TripSearchResultDto
                 {
                     TripId = t.TripId,
+
                     FromLocation = t.Route?.StartLocation ?? "",
                     ToLocation = t.Route?.EndLocation ?? "",
+
                     DepartureDate = t.StartTime.Date,
                     DepartureTime = t.StartTime.ToString("HH:mm"),
-                    MaxPassengers = t.AvailableSeats,
+
+                    MaxPassengers = maxPassengers,
                     AvailableSeats = t.AvailableSeats,
                     NumberOfBookings = t.Bookings?.Count() ?? 0,
+
                     Price = t.PricePerSeat,
-                    VehicleType = driverVehicle != null ? $"{driverVehicle.VehicleMake} {driverVehicle.VehicleModel}" : "",
-                    DriverName = driver?.UserProfile?.FullName ?? "",
+
+                    VehicleType = vehicleType,
+
+                    DriverName = driverName,
                     DriverRating = driverRating,
                     TotalReviews = totalReviews
                 };
@@ -190,6 +243,8 @@ namespace SmartTransportation.BLL.Services
             return result;
         }
 
-
     }
+
+
 }
+

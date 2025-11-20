@@ -244,162 +244,205 @@
     </style>
 }
 
+
+
 <div class="search-container">
-    <!-- Search Header -->
+
+    <!-- Header -->
     <div class="search-header">
-        <h1>Find Your Perfect Trip</h1>
-        <p style="opacity: 0.9; margin-top: 8px;">Search for available trips and book your seat</p>
+        <h1>Find Your Trip</h1>
+        <p>Search by route, date, and passengers — then book instantly.</p>
     </div>
 
     <!-- Search Form -->
     <div class="search-form">
         <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
             <div class="form-grid">
-                <!-- Replace the datalist sections in your SearchTrip.cshtml with this: -->
 
                 <div class="form-group">
                     <label asp-for="FromLocation">From</label>
-                    <input asp-for="FromLocation" type="text" placeholder="Cairo" list="cities-from" />
-                    <datalist id="cities-from">
-                        <option value="Cairo"></option>
-                        <option value="Alexandria"></option>
-                        <option value="Giza"></option>
-                        <option value="Luxor"></option>
-                        <option value="Aswan"></option>
-                    </datalist>
+                    <input asp-for="FromLocation" placeholder="City / Stop" />
+                    <span asp-validation-for="FromLocation" class="text-danger small"></span>
                 </div>
 
                 <div class="form-group">
                     <label asp-for="ToLocation">To</label>
-                    <input asp-for="ToLocation" type="text" placeholder="Alexandria" list="cities-to" />
-                    <datalist id="cities-to">
-                        <option value="Cairo"></option>
-                        <option value="Alexandria"></option>
-                        <option value="Giza"></option>
-                        <option value="Luxor"></option>
-                        <option value="Aswan"></option>
-                    </datalist>
+                    <input asp-for="ToLocation" placeholder="City / Stop" />
+                    <span asp-validation-for="ToLocation" class="text-danger small"></span>
                 </div>
+
                 <div class="form-group">
                     <label asp-for="DepartureDate">Date</label>
                     <input asp-for="DepartureDate" type="date" />
+                    <span asp-validation-for="DepartureDate" class="text-danger small"></span>
                 </div>
 
                 <div class="form-group">
                     <label asp-for="Passengers">Passengers</label>
-                    <select asp-for="Passengers">
-                        <option value="1">1 Passenger</option>
-                        <option value="2">2 Passengers</option>
-                        <option value="3">3 Passengers</option>
-                        <option value="4">4 Passengers</option>
-                        <option value="5">5+ Passengers</option>
-                    </select>
+                    <input asp-for="Passengers" type="number" min="1" />
+                    <span asp-validation-for="Passengers" class="text-danger small"></span>
                 </div>
             </div>
 
-            <button type="submit" class="btn-search">🔍 Search Trips</button>
+            <button class="btn-search" type="submit">Search</button>
+
         </form>
     </div>
 
-    <!-- Search Results -->
-    @if (Model.HasSearched)
+    <!-- Error Alert -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
-        <div class="results-section">
-            <div class="results-header">
-                <h2>Available Trips (@Model.SearchResults.Count)</h2>
-                @if (Model.SearchResults.Any())
-                {
-                    <div class="filter-badges">
-                        @if (!string.IsNullOrEmpty(Model.FromLocation))
-                        {
-                            <span class="badge">From: @Model.FromLocation</span>
-                        }
-                        @if (!string.IsNullOrEmpty(Model.ToLocation))
-                        {
-                            <span class="badge">To: @Model.ToLocation</span>
-                        }
-                        @if (Model.DepartureDate.HasValue)
-                        {
-                            <span class="badge">Date: @Model.DepartureDate.Value.ToString("MMM dd")</span>
-                        }
-                    </div>
-                }
-            </div>
+        <div class="alert alert-danger mt-3">
+            @Model.ErrorMessage
+        </div>
+    }
 
+    <div class="results-section">
+
+        @if (Model.HasSearched)
+        {
+            <!-- When results exist -->
             @if (Model.SearchResults.Any())
             {
+                <div class="results-header">
+                    <h2>Available Trips</h2>
+                    <span class="badge">@Model.SearchResults.Count result(s)</span>
+                </div>
+
+                <div class="filter-badges">
+                    @if (!string.IsNullOrEmpty(Model.FromLocation))
+                    {
+                        <span class="badge">From: @Model.FromLocation</span>
+                    }
+                    @if (!string.IsNullOrEmpty(Model.ToLocation))
+                    {
+                        <span class="badge">To: @Model.ToLocation</span>
+                    }
+                    @if (Model.DepartureDate.HasValue)
+                    {
+                        <span class="badge">Date: @Model.DepartureDate.Value.ToString("dd MMM")</span>
+                    }
+                    <span class="badge">@Model.Passengers passenger(s)</span>
+                </div>
+
                 @foreach (var trip in Model.SearchResults)
                 {
                     <div class="trip-result-card">
+
+                        <!-- Header / Route -->
                         <div class="trip-result-header">
                             <div class="route-info">
-                                <div class="route-path">@trip.FromLocation → @trip.ToLocation</div>
+                                <div class="route-path">
+                                    @trip.FromLocation → @trip.ToLocation
+                                </div>
+
                                 <div class="route-details">
                                     <div class="detail-item">
-                                        📅 @trip.DepartureDate.ToString("MMM dd, yyyy")
+                                        <i class="bi bi-calendar"></i>
+                                        @trip.DepartureDate.ToString("ddd, dd MMM yyyy")
                                     </div>
+
                                     <div class="detail-item">
-                                        🕐 @trip.DepartureTime
+                                        <i class="bi bi-clock"></i>
+                                        @trip.DepartureTime
                                     </div>
+
                                     <div class="detail-item">
-                                        👥 @trip.AvailableSeats/@trip.MaxPassengers seats
+                                        <i class="bi bi-people"></i>
+                                        @trip.AvailableSeats seats left (max @trip.MaxPassengers)
                                     </div>
+
                                     <div class="detail-item">
-                                        🚗 @trip.VehicleType
+                                        <i class="bi bi-car-front"></i>
+                                        @trip.VehicleType
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- Price Box -->
                             <div class="price-box">
-                                <div class="price">@trip.Price EGP</div>
-                                <div class="price-label">per person</div>
+                                <div class="price">@trip.Price.ToString("0.00") EGP</div>
+                                <div class="price-label">per seat</div>
+
+                                @if (Model.Passengers > 0)
+                                {
+                                    var total = trip.Price * Model.Passengers;
+                                    <div class="price-label mt-1">
+                                        Total for @Model.Passengers:
+                                        <strong>@total.ToString("0.00") EGP</strong>
+                                    </div>
+                                }
                             </div>
                         </div>
+
+                        <!-- Driver Info -->
+                        @{
+                            var hasName = !string.IsNullOrWhiteSpace(trip.DriverName);
+                            var driverInitial = hasName
+                                ? trip.DriverName!.Trim()[0].ToString().ToUpper()
+                                : "?";
+                        }
 
                         <div class="driver-info">
-                            <div class="driver-avatar">@trip.DriverName.Substring(0, 1)</div>
+                            <div class="driver-avatar">
+                                @driverInitial
+                            </div>
                             <div class="driver-details">
-                                <h4>@trip.DriverName</h4>
-                                <div class="driver-rating">
-                                    ⭐ @trip.DriverRating.ToString("0.0") (@trip.TotalReviews reviews)
-                                </div>
+                                <h4>@(string.IsNullOrWhiteSpace(trip.DriverName) ? "Unknown Driver" : trip.DriverName)</h4>
+
+                                @if (trip.DriverRating > 0)
+                                {
+                                    <div class="driver-rating">
+                                        ⭐ @trip.DriverRating.ToString("0.0") (@trip.TotalReviews reviews)
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="driver-rating text-muted small">
+                                        No reviews yet
+                                    </div>
+                                }
                             </div>
                         </div>
 
+                        <!-- Actions -->
                         <div class="trip-actions">
-                            <button class="btn-book" onclick="bookTrip(@trip.TripId)">Book Now</button>
-                            <button class="btn-details" onclick="viewDetails(@trip.TripId)">View Details</button>
+
+                            <a asp-page="/Trips/Details"
+                               asp-route-tripId="@trip.TripId"
+                               class="btn-details">
+                                View Details
+                            </a>
+
+                            <a asp-page="/Bookings/Create"
+                               asp-route-tripId="@trip.TripId"
+                               asp-route-passengers="@Model.Passengers"
+                               class="btn-book">
+                                Book Now
+                            </a>
+
                         </div>
+
                     </div>
                 }
             }
             else
             {
+                <!-- No Results -->
                 <div class="no-results">
                     <h3>No trips found</h3>
-                    <p>Try adjusting your search criteria</p>
+                    <p>Try changing your filters or date.</p>
                 </div>
             }
-        </div>
-    }
+        }
+
+    </div>
+
 </div>
 
 @section Scripts {
-    <script>
-        function bookTrip(tripId) {
-            window.location.href = `/BookTrip?tripId=${tripId}`;
-        }
-
-        function viewDetails(tripId) {
-            window.location.href = `/TripDetails?id=${tripId}`;
-        }
-
-        // Set min date to today
-        document.addEventListener('DOMContentLoaded', function() {
-            const dateInput = document.querySelector('input[type="date"]');
-            if (dateInput) {
-                const today = new Date().toISOString().split('T')[0];
-                dateInput.setAttribute('min', today);
-            }
-        });
-    </script>
+    <partial name="_ValidationScriptsPartial" />
 }
+

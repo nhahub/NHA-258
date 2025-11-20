@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 using System.ComponentModel.DataAnnotations;
+using System.Net.Http.Json;
 
 namespace SmartTransportation.Web.Pages
 {
@@ -22,6 +24,15 @@ namespace SmartTransportation.Web.Pages
 
     public class SearchTripModel : PageModel
     {
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
+
+        public SearchTripModel(IHttpClientFactory httpClientFactory, IConfiguration config)
+        {
+            _httpClientFactory = httpClientFactory;
+            _config = config;
+        }
+
         [BindProperty]
         public string? FromLocation { get; set; }
 
@@ -29,123 +40,61 @@ namespace SmartTransportation.Web.Pages
         public string? ToLocation { get; set; }
 
         [BindProperty]
+        [DataType(DataType.Date)]
         public DateTime? DepartureDate { get; set; }
 
         [BindProperty]
+        [Range(1, 20, ErrorMessage = "Passengers must be at least 1")]
         public int Passengers { get; set; } = 1;
 
         public bool HasSearched { get; set; }
         public List<TripSearchResult> SearchResults { get; set; } = new();
+        public string? ErrorMessage { get; set; }
 
         public void OnGet()
         {
             HasSearched = false;
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
             HasSearched = true;
 
-            // TODO: Implement actual search from database
-            // var trips = await _tripService.SearchTripsAsync(FromLocation, ToLocation, DepartureDate, Passengers);
-            // SearchResults = trips;
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
 
-            // Mock data for now
-            SearchResults = GetMockSearchResults();
+            var client = _httpClientFactory.CreateClient();
+            var apiBase = _config["ApiBaseUrl"]
+                          ?? throw new InvalidOperationException("ApiBaseUrl is not configured.");
+
+            try
+            {
+                // Use the form values to call the API
+                var queryParams = new Dictionary<string, string?>
+                {
+                    ["from"] = FromLocation,
+                    ["to"] = ToLocation,
+                    ["date"] = DepartureDate?.ToString("yyyy-MM-dd"),
+                    ["passengers"] = Passengers.ToString()
+                };
+
+                var url = QueryHelpers.AddQueryString(
+                    $"{apiBase}/api/trips/search",
+                    queryParams!
+                );
+
+                var trips = await client.GetFromJsonAsync<List<TripSearchResult>>(url);
+                SearchResults = trips ?? new List<TripSearchResult>();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Error while searching trips: {ex.Message}";
+                SearchResults = new List<TripSearchResult>();
+            }
 
             return Page();
-        }
-
-        private List<TripSearchResult> GetMockSearchResults()
-        {
-            var allTrips = new List<TripSearchResult>
-            {
-                new TripSearchResult
-                {
-                    TripId = 1, 
-                    FromLocation = "Cairo",
-                    ToLocation = "Alexandria",
-                    DepartureDate = DateTime.Now.AddDays(1),
-                    DepartureTime = "08:00 AM",
-                    MaxPassengers = 4,
-                    AvailableSeats = 2,
-                    Price = 150.00m,
-                    VehicleType = "Sedan",
-                    DriverName = "Ahmed Mohamed",
-                    DriverRating = 4.8,
-                    TotalReviews = 156
-                },
-                new TripSearchResult
-                {
-                    TripId = 2,
-                    FromLocation = "Cairo",
-                    ToLocation = "Alexandria",
-                    DepartureDate = DateTime.Now.AddDays(1),
-                    DepartureTime = "02:00 PM",
-                    MaxPassengers = 6,
-                    AvailableSeats = 4,
-                    Price = 120.00m,
-                    VehicleType = "SUV",
-                    DriverName = "Mohamed Ali",
-                    DriverRating = 4.6,
-                    TotalReviews = 89
-                },
-                new TripSearchResult
-                {
-                    TripId = 3,
-                    FromLocation = "Giza",
-                    ToLocation = "Luxor",
-                    DepartureDate = DateTime.Now.AddDays(2),
-                    DepartureTime = "06:00 AM",
-                    MaxPassengers = 4,
-                    AvailableSeats = 3,
-                    Price = 350.00m,
-                    VehicleType = "Sedan",
-                    DriverName = "Sara Ahmed",
-                    DriverRating = 4.9,
-                    TotalReviews = 234
-                },
-                new TripSearchResult
-                {
-                    TripId = 4,
-                    FromLocation = "Cairo",
-                    ToLocation = "Hurghada",
-                    DepartureDate = DateTime.Now.AddDays(3),
-                    DepartureTime = "10:00 PM",
-                    MaxPassengers = 4,
-                    AvailableSeats = 1,
-                    Price = 400.00m,
-                    VehicleType = "Sedan",
-                    DriverName = "Khaled Hassan",
-                    DriverRating = 4.7,
-                    TotalReviews = 178
-                }
-            };
-
-            // Filter based on search criteria
-            var filtered = allTrips.AsQueryable();
-
-            if (!string.IsNullOrEmpty(FromLocation))
-            {
-                filtered = filtered.Where(t => t.FromLocation.Contains(FromLocation, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (!string.IsNullOrEmpty(ToLocation))
-            {
-                filtered = filtered.Where(t => t.ToLocation.Contains(ToLocation, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (DepartureDate.HasValue)
-            {
-                filtered = filtered.Where(t => t.DepartureDate.Date == DepartureDate.Value.Date);
-            }
-
-            if (Passengers > 0)
-            {
-                filtered = filtered.Where(t => t.AvailableSeats >= Passengers);
-            }
-
-            return filtered.ToList();
         }
     }
 }
