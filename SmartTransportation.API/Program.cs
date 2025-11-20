@@ -1,14 +1,18 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using SmartTransportation.API.Extensions;
 using SmartTransportation.BLL.DTOs.Notification;
+using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.BLL.Jobs;
 using SmartTransportation.BLL.Services;
-using System.Text;
+using SmartTransportation.DAL.Models;
+using SmartTransportation.DAL.Repositories.UnitOfWork;
 using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +63,18 @@ builder.Services.AddHostedService<PaymentStatusBackgroundService>();
 builder.Services.AddHttpClient();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddCorsPolicy();
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddAutoMapper(typeof(Program)); // or the assembly containing your profiles
+
+// If you have a concrete implementation called DriverService
+builder.Services.AddScoped<IDriverService, DriverService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+
+
+
+builder.Services.AddDbContext<TransportationContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
 // =====================
