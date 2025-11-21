@@ -1,11 +1,15 @@
 ﻿@page
-@model CreateModel
+@model SmartTransportation.Web.Pages.Bookings.CreateModel
 
 @{
     ViewData["Title"] = "Book Trip";
 }
 
 <link rel="stylesheet" href="~/css/create-booking.css" />
+
+@* Choices.js CSS for pretty multi-select *@
+<link rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
 <div class="search-container">
 
@@ -46,19 +50,22 @@
             <input type="hidden" asp-for="Passengers" />
 
             <div class="form-grid">
-                <!-- Multi-select segments -->
+
+                <!-- Pretty multi-select segments -->
                 <div class="form-group">
                     <label asp-for="SelectedSegmentIds">
                         Select segments for your ride
                     </label>
-                    <select asp-for="SelectedSegmentIds" multiple>
+                    <select asp-for="SelectedSegmentIds"
+                            multiple
+                            class="segment-multiselect">
                         @foreach (var seg in Model.SegmentOptions)
                         {
                             <option value="@seg.SegmentId">@seg.Label</option>
                         }
                     </select>
                     <small style="font-size: 12px; color: var(--gray-600); margin-top:4px;">
-                        Hold Ctrl (Windows) or Cmd (Mac) to select multiple segments.
+                        You can choose one or more segments. Use search to quickly find a segment.
                     </small>
                     <span asp-validation-for="SelectedSegmentIds" class="text-danger"></span>
                 </div>
@@ -116,4 +123,23 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    @* Choices.js script *@
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.querySelector('.segment-multiselect');
+            if (el) {
+                new Choices(el, {
+                    removeItemButton: true,           // little "x" chips
+                    searchEnabled: true,              // search box
+                    placeholder: true,
+                    placeholderValue: 'Select one or more segments',
+                    searchPlaceholderValue: 'Search segments...',
+                    shouldSort: false                 // keep route order
+                });
+            }
+        });
+    </script>
 }
