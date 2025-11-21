@@ -11,7 +11,7 @@ namespace SmartTransportation.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize]
+    [Authorize]
     public class RoutesController : ControllerBase
     {
         private readonly IRouteService _routeService;
@@ -49,7 +49,7 @@ namespace SmartTransportation.API.Controllers
         }
 
         [HttpPost]
-        //[Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateRoute([FromBody] CreateRouteDTO routeDto)
         {
             if (!ModelState.IsValid)
