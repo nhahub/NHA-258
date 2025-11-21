@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Json;
 
+
 namespace SmartTransportation.Web.Pages
 {
     public class TripSearchResult

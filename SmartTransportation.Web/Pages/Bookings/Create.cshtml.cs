@@ -1,11 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace SmartTransportation.Web.Pages.Bookings
 {
-    // View models for this page
     public class RouteSegmentVm
     {
         public int SegmentId { get; set; }
@@ -20,7 +20,9 @@ namespace SmartTransportation.Web.Pages.Bookings
         public int RouteId { get; set; }
         public string StartLocation { get; set; } = string.Empty;
         public string EndLocation { get; set; } = string.Empty;
-        public List<RouteSegmentVm> RouteSegments { get; set; } = new();
+
+        public List<RouteSegmentVm>? RouteSegments { get; set; }
+        public List<RouteSegmentVm>? Segments { get; set; }
     }
 
     public class TripDetailsVm
@@ -34,11 +36,13 @@ namespace SmartTransportation.Web.Pages.Bookings
         public RouteVm? Route { get; set; }
     }
 
-    // STOP option (city/point), not segment
-    public class StopOption
+
+    // What the view uses to show each segment option
+    public class SegmentOption
     {
-        public int Index { get; set; }      // 0..N
-        public string Name { get; set; } = string.Empty;
+        public int SegmentId { get; set; }
+        public int Order { get; set; }
+        public string Label { get; set; } = string.Empty; // e.g. "Alexandria → Tanta (80.0 km)"
     }
 
     public class BookingResponseVm
@@ -57,14 +61,14 @@ namespace SmartTransportation.Web.Pages.Bookings
             _config = config;
         }
 
-        // ---- Trip & route data ----
+        // Trip & route data (for display)
         public TripDetailsVm? Trip { get; set; }
         public List<RouteSegmentVm> Segments { get; set; } = new();
-        public List<StopOption> Stops { get; set; } = new();
+        public List<SegmentOption> SegmentOptions { get; set; } = new();
 
         public string? ErrorMessage { get; set; }
 
-        // ---- Query-bound ----
+        // Query-bound (trip & initial passengers from search page)
         [BindProperty(SupportsGet = true)]
         public int TripId { get; set; }
 
@@ -72,33 +76,54 @@ namespace SmartTransportation.Web.Pages.Bookings
         [Range(1, 20, ErrorMessage = "Seats must be at least 1.")]
         public int Passengers { get; set; } = 1;
 
-        // ---- Form-bound ----
+        // Form-bound
         [BindProperty]
         [Range(1, 20, ErrorMessage = "Seats must be at least 1.")]
         public int SeatsCount { get; set; } = 1;
 
+        // MULTI-SELECT: all chosen segment IDs come here
         [BindProperty]
-        [Required(ErrorMessage = "Please select an origin.")]
-        public int FromStopIndex { get; set; }
+        [Required(ErrorMessage = "Please select at least one segment.")]
+        public List<int> SelectedSegmentIds { get; set; } = new();
 
-        [BindProperty]
-        [Required(ErrorMessage = "Please select a destination.")]
-        public int ToStopIndex { get; set; }
+        // Get current logged user id from claims
+        private int GetCurrentUserId()
+        {
+            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+                         ?? User.FindFirst("sub")
+                         ?? User.FindFirst("userId");
 
-        // TODO: replace with actual logged-in user id
-        private int GetCurrentUserId() => 1;
+            if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+                return id;
+
+            throw new InvalidOperationException("Logged-in user id not found in claims.");
+        }
 
         // ---------- GET ----------
-
         public async Task<IActionResult> OnGetAsync()
         {
+            // Fallback: read from query string manually if binding missed it
+            if (TripId <= 0)
+            {
+                var qTrip = Request.Query["tripId"].ToString();
+                if (int.TryParse(qTrip, out var parsedTripId))
+                    TripId = parsedTripId;
+            }
+
             if (TripId <= 0)
             {
                 ErrorMessage = "Trip not specified.";
                 return Page();
             }
 
-            var loaded = await LoadTripAndStopsAsync();
+            if (Passengers <= 0)
+            {
+                var qPassengers = Request.Query["passengers"].ToString();
+                if (int.TryParse(qPassengers, out var parsedPassengers))
+                    Passengers = parsedPassengers;
+            }
+
+            var loaded = await LoadTripAndSegmentsAsync();
             if (!loaded)
             {
                 ErrorMessage = "Unable to load trip details.";
@@ -107,27 +132,36 @@ namespace SmartTransportation.Web.Pages.Bookings
 
             SeatsCount = Passengers > 0 ? Passengers : 1;
 
-            // Default route: full route (first stop -> last stop)
-            if (Stops.Any())
+            // default selection: all segments (whole route)
+            if (SegmentOptions.Any())
             {
-                FromStopIndex = 0;
-                ToStopIndex = Stops.Count - 1;
+                SelectedSegmentIds = SegmentOptions
+                    .OrderBy(s => s.Order)
+                    .Select(s => s.SegmentId)
+                    .ToList();
             }
 
             return Page();
         }
 
         // ---------- POST ----------
-
         public async Task<IActionResult> OnPostAsync()
         {
+            // Same TripId fallback on POST
+            if (TripId <= 0)
+            {
+                var qTrip = Request.Query["tripId"].ToString();
+                if (int.TryParse(qTrip, out var parsedTripId))
+                    TripId = parsedTripId;
+            }
+
             if (TripId <= 0)
             {
                 ErrorMessage = "Trip not specified.";
                 return Page();
             }
 
-            var loaded = await LoadTripAndStopsAsync();
+            var loaded = await LoadTripAndSegmentsAsync();
             if (!loaded)
             {
                 ErrorMessage = "Unable to load trip details.";
@@ -139,31 +173,28 @@ namespace SmartTransportation.Web.Pages.Bookings
                 return Page();
             }
 
-            if (FromStopIndex < 0 || ToStopIndex <= FromStopIndex || ToStopIndex >= Stops.Count)
+            if (!SegmentOptions.Any())
             {
-                ModelState.AddModelError(string.Empty, "Destination must come after origin.");
+                ErrorMessage = "No route segments available for this trip.";
                 return Page();
             }
 
-            // segments[i] = between stop[i] and stop[i+1]
-            // so from = i, to = j  -> segments i..(j-1)
-            var orderedSegments = Segments.OrderBy(s => s.SegmentOrder).ToList();
-
-            if (orderedSegments.Count + 1 != Stops.Count)
+            if (SelectedSegmentIds == null || !SelectedSegmentIds.Any())
             {
-                ErrorMessage = "Internal route mapping error.";
+                ModelState.AddModelError(string.Empty, "Please select at least one segment.");
                 return Page();
             }
 
-            var selectedSegmentIds = orderedSegments
-                .Skip(FromStopIndex)
-                .Take(ToStopIndex - FromStopIndex)
-                .Select(s => s.SegmentId)
+            // Ensure all selected IDs actually exist on this route
+            var validIds = SegmentOptions.Select(s => s.SegmentId).ToHashSet();
+            var cleanedSegmentIds = SelectedSegmentIds
+                .Where(id => validIds.Contains(id))
+                .Distinct()
                 .ToList();
 
-            if (!selectedSegmentIds.Any())
+            if (!cleanedSegmentIds.Any())
             {
-                ErrorMessage = "No segments found for the selected route.";
+                ErrorMessage = "No valid segments selected.";
                 return Page();
             }
 
@@ -171,26 +202,26 @@ namespace SmartTransportation.Web.Pages.Bookings
             var apiBase = _config["ApiBaseUrl"]
                           ?? throw new InvalidOperationException("ApiBaseUrl is not configured.");
 
-            var createBookingPayload = new
+            var payload = new
             {
                 tripId = TripId,
                 bookerUserId = GetCurrentUserId(),
                 seatsCount = SeatsCount,
-                totalAmount = 0m, // backend recalculates at payment time
+                totalAmount = 0m,              // backend calculates later
                 passengerUserIds = (List<int>?)null,
-                segmentIds = selectedSegmentIds
+                segmentIds = cleanedSegmentIds
             };
 
             try
             {
                 var response = await client.PostAsJsonAsync(
                     $"{apiBase}/api/bookings",
-                    createBookingPayload
+                    payload
                 );
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    ErrorMessage = $"Error while creating booking ({(int)response.StatusCode})";
+                    ErrorMessage = $"Error while creating booking ({(int)response.StatusCode}).";
                     return Page();
                 }
 
@@ -201,7 +232,6 @@ namespace SmartTransportation.Web.Pages.Bookings
                     return Page();
                 }
 
-                // Redirect to payment page
                 return RedirectToPage("/Payment/Pay", new { bookingId = booking.BookingId });
             }
             catch (Exception ex)
@@ -211,9 +241,8 @@ namespace SmartTransportation.Web.Pages.Bookings
             }
         }
 
-        // ---------- Helpers ----------
-
-        private async Task<bool> LoadTripAndStopsAsync()
+        // load trip + segments, and build SegmentOptions for the view
+        private async Task<bool> LoadTripAndSegmentsAsync()
         {
             var client = _httpClientFactory.CreateClient();
             var apiBase = _config["ApiBaseUrl"]
@@ -221,33 +250,42 @@ namespace SmartTransportation.Web.Pages.Bookings
 
             try
             {
-                Trip = await client.GetFromJsonAsync<TripDetailsVm>($"{apiBase}/api/trips/{TripId}");
-                if (Trip?.Route?.RouteSegments == null || !Trip.Route.RouteSegments.Any())
+                // Fallback: pull tripId from query if not bound
+                if (TripId <= 0)
+                {
+                    var qTrip = Request.Query["tripId"].ToString();
+                    if (int.TryParse(qTrip, out var parsedTripId))
+                        TripId = parsedTripId;
+                }
+
+                if (TripId <= 0)
                     return false;
 
-                Segments = Trip.Route.RouteSegments
+                Trip = await client.GetFromJsonAsync<TripDetailsVm>($"{apiBase}/api/trips/{TripId}");
+                if (Trip?.Route == null)
+                    return false;
+
+                // Try both possible JSON property names
+                var rawSegments = Trip.Route.RouteSegments;
+                if (rawSegments == null || !rawSegments.Any())
+                    rawSegments = Trip.Route.Segments;
+
+                if (rawSegments == null || !rawSegments.Any())
+                    return false;
+
+                Segments = rawSegments
                     .OrderBy(s => s.SegmentOrder)
                     .ToList();
 
-                // Build stops from segments:
-                // stop[0] = first.StartPoint
-                // stop[1] = first.EndPoint
-                // stop[2] = second.EndPoint, etc.
-                Stops = new List<StopOption>();
-
-                var firstSeg = Segments.First();
-                Stops.Add(new StopOption { Index = 0, Name = firstSeg.StartPoint });
-
-                int index = 1;
-                foreach (var seg in Segments)
-                {
-                    Stops.Add(new StopOption
+                SegmentOptions = Segments
+                    .Select(s => new SegmentOption
                     {
-                        Index = index,
-                        Name = seg.EndPoint
-                    });
-                    index++;
-                }
+                        SegmentId = s.SegmentId,
+                        Order = s.SegmentOrder,
+                        Label = $"{s.StartPoint} → {s.EndPoint} ({(s.DistanceKm ?? 0):0.0} km)"
+                    })
+                    .OrderBy(o => o.Order)
+                    .ToList();
 
                 return true;
             }
@@ -256,5 +294,7 @@ namespace SmartTransportation.Web.Pages.Bookings
                 return false;
             }
         }
+
     }
 }
+

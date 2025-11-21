@@ -1,5 +1,5 @@
 ﻿@page
-@model SmartTransportation.Web.Pages.Bookings.CreateModel
+@model CreateModel
 
 @{
     ViewData["Title"] = "Book Trip";
@@ -9,7 +9,7 @@
 
 <div class="search-container">
 
-    <!-- Header: same style as search page -->
+    <!-- Header: same look as Search Trips page -->
     <div class="search-header">
         <h1>Confirm Your Booking</h1>
 
@@ -28,15 +28,10 @@
                 <strong>Available seats:</strong> @Model.Trip.AvailableSeats
             </p>
         }
-        else
-        {
-            <p>Select your segment and passengers to continue.</p>
-        }
     </div>
 
-    <!-- Main form card: uses search-form + form-grid + form-group + btn-search -->
+    <!-- Booking form card -->
     <div class="search-form">
-
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
             <div class="no-results" style="padding:16px; margin-bottom:16px;">
@@ -51,28 +46,21 @@
             <input type="hidden" asp-for="Passengers" />
 
             <div class="form-grid">
-                <!-- From stop -->
+                <!-- Multi-select segments -->
                 <div class="form-group">
-                    <label asp-for="FromStopIndex">From</label>
-                    <select asp-for="FromStopIndex">
-                        @foreach (var stop in Model.Stops)
+                    <label asp-for="SelectedSegmentIds">
+                        Select segments for your ride
+                    </label>
+                    <select asp-for="SelectedSegmentIds" multiple>
+                        @foreach (var seg in Model.SegmentOptions)
                         {
-                            <option value="@stop.Index">@stop.Name</option>
+                            <option value="@seg.SegmentId">@seg.Label</option>
                         }
                     </select>
-                    <span asp-validation-for="FromStopIndex" class="text-danger"></span>
-                </div>
-
-                <!-- To stop -->
-                <div class="form-group">
-                    <label asp-for="ToStopIndex">To</label>
-                    <select asp-for="ToStopIndex">
-                        @foreach (var stop in Model.Stops)
-                        {
-                            <option value="@stop.Index">@stop.Name</option>
-                        }
-                    </select>
-                    <span asp-validation-for="ToStopIndex" class="text-danger"></span>
+                    <small style="font-size: 12px; color: var(--gray-600); margin-top:4px;">
+                        Hold Ctrl (Windows) or Cmd (Mac) to select multiple segments.
+                    </small>
+                    <span asp-validation-for="SelectedSegmentIds" class="text-danger"></span>
                 </div>
 
                 <!-- Seats -->
@@ -89,7 +77,7 @@
         </form>
     </div>
 
-    <!-- Route segments overview: styled like trip cards -->
+    <!-- Route overview (same card style as search results) -->
     @if (Model.Segments.Any())
     {
         <div class="results-section">
@@ -105,23 +93,18 @@
                             <div class="route-path">
                                 @seg.StartPoint → @seg.EndPoint
                             </div>
-
                             <div class="route-details">
                                 <div class="detail-item">
                                     <span>Segment #@seg.SegmentOrder</span>
                                 </div>
-                                <div class="detail-item">
-                                    <span>Distance: @((seg.DistanceKm ?? 0).ToString("0.0")) km</span>
-                                </div>
                             </div>
                         </div>
-
                         <div class="price-box">
                             <div class="price">
                                 @((seg.DistanceKm ?? 0).ToString("0.0")) km
                             </div>
                             <div class="price-label">
-                                segment distance
+                                distance
                             </div>
                         </div>
                     </div>
@@ -134,4 +117,3 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }
-
