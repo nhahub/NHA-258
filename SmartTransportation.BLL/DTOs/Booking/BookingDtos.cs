@@ -43,15 +43,15 @@ namespace SmartTransportation.BLL.DTOs.Booking
         public int BookingSegmentId { get; set; }
         public int SegmentId { get; set; }
     }
-    
+
     public class CreateBookingDto
     {
         public int TripId { get; set; }
-        public int BookerUserId { get; set; }
         public int SeatsCount { get; set; }
         public List<int>? PassengerUserIds { get; set; }
         public List<int>? SegmentIds { get; set; }
     }
+
 
     public class UpdateBookingDto
     {

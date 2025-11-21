@@ -140,14 +140,17 @@ namespace SmartTransportation.BLL.Services
         // Confirm payment (success or failed)
         public async Task<Payment> ConfirmPaymentAsync(int paymentId, string paymentMethodId)
         {
+            // Get the payment record
             var payment = await _unitOfWork.Payments.GetByIdAsync(paymentId);
-            if (payment == null) throw new InvalidOperationException("Payment not found.");
+            if (payment == null)
+                throw new InvalidOperationException("Payment not found.");
 
             var service = new PaymentIntentService();
             PaymentIntent intent;
 
             try
             {
+                // Confirm the payment with Stripe
                 intent = await service.ConfirmAsync(payment.StripePaymentIntentId, new PaymentIntentConfirmOptions
                 {
                     PaymentMethod = paymentMethodId
@@ -155,6 +158,7 @@ namespace SmartTransportation.BLL.Services
             }
             catch (StripeException ex)
             {
+                // Payment failed
                 payment.Status = PaymentStatus.Failed.ToString();
                 payment.LastError = ex.Message;
                 _unitOfWork.Payments.Update(payment);
@@ -162,6 +166,7 @@ namespace SmartTransportation.BLL.Services
                 return payment;
             }
 
+            // Map Stripe payment status to local status
             payment.Status = intent.Status switch
             {
                 "succeeded" => PaymentStatus.Succeeded.ToString(),
@@ -173,20 +178,37 @@ namespace SmartTransportation.BLL.Services
             if (intent.Status == "succeeded")
             {
                 payment.PaidAt = DateTime.UtcNow;
+
+                // Update booking status and payment status
                 var booking = await _unitOfWork.Bookings.GetByIdAsync(payment.BookingId);
                 if (booking != null)
                 {
                     booking.BookingStatus = "Confirmed";
                     booking.PaymentStatus = "Paid";
                     _unitOfWork.Bookings.Update(booking);
+
+                    // Optional: Mark passengers as checked-in
+                    var bookingsWithDetails = await _unitOfWork.Bookings.GetBookingsWithDetailsAsync();
+                    var fullBooking = bookingsWithDetails.FirstOrDefault(b => b.BookingId == booking.BookingId);
+
+                    if (fullBooking?.BookingPassengers != null)
+                    {
+                        foreach (var passenger in fullBooking.BookingPassengers)
+                        {
+                            passenger.CheckInStatus = true;
+                            _unitOfWork.BookingPassengers.Update(passenger);
+                        }
+                    }
                 }
             }
 
+            // Save payment and booking updates
             _unitOfWork.Payments.Update(payment);
             await _unitOfWork.SaveAsync();
 
             return payment;
         }
+
 
         // Refresh status from Stripe (no confirm)
         public async Task<Payment> RefreshStatusFromStripeAsync(int paymentId)
