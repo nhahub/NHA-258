@@ -22,6 +22,7 @@ namespace SmartTransportation.API.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<RouteDetailsDTO>>> GetAllRoutes()
         {
             var routes = await _routeService.GetAllRoutesAsync();

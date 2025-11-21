@@ -1,0 +1,113 @@
+﻿@page
+@model SmartTransportation.Web.Pages.Driver.Trips.CreateModel
+
+@{
+    ViewData["Title"] = "Create Trip";
+}
+
+<link rel="stylesheet" href="~/css/create-booking.css" />
+
+<div class="search-container">
+
+    <div class="search-header">
+        <h1>Create a New Trip</h1>
+
+        @if (Model.Vehicle != null)
+        {
+            <p>
+                Vehicle:
+                <strong>@Model.Vehicle.VehicleMake @Model.Vehicle.VehicleModel</strong>
+                (Seats: @Model.Vehicle.SeatsCount)
+            </p>
+
+            <p>Plate: <strong>@Model.Vehicle.PlateNumber</strong></p>
+
+            @if (!Model.Vehicle.IsVerified)
+            {
+                <p style="color:#facc15;">
+                    ⚠ Your vehicle is not verified yet.
+                </p>
+            }
+        }
+        else
+        {
+            <p style="color:#ef4444;">No vehicle found. Please add your vehicle.</p>
+        }
+    </div>
+
+    <div class="search-form">
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="no-results">@Model.ErrorMessage</div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+        {
+            <div class="result-message success">@Model.SuccessMessage</div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="form-grid">
+
+                <!-- Route -->
+                <div class="form-group">
+                    <label asp-for="SelectedRouteId">Route</label>
+                    <select asp-for="SelectedRouteId">
+                        <option value="">-- Select Route --</option>
+                        @foreach (var route in Model.Routes)
+                        {
+                            <option value="@route.RouteId">@route.DisplayName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SelectedRouteId" class="text-danger"></span>
+                </div>
+
+                <!-- Date -->
+                <div class="form-group">
+                    <label asp-for="DepartureDate">Departure Date</label>
+                    <input asp-for="DepartureDate" type="date" />
+                    <span asp-validation-for="DepartureDate" class="text-danger"></span>
+                </div>
+
+                <!-- Time -->
+                <div class="form-group">
+                    <label asp-for="DepartureTime">Departure Time</label>
+                    <input asp-for="DepartureTime" type="time" />
+                    <span asp-validation-for="DepartureTime" class="text-danger"></span>
+                </div>
+
+                <!-- Seats -->
+                <div class="form-group">
+                    <label asp-for="AvailableSeats">Available Seats</label>
+                    <input asp-for="AvailableSeats" type="number" min="1" max="100" />
+                    <span asp-validation-for="AvailableSeats" class="text-danger"></span>
+                </div>
+
+                <!-- Price -->
+                <div class="form-group">
+                    <label asp-for="PricePerSeat">Price Per Seat</label>
+                    <input asp-for="PricePerSeat" type="number" step="0.01" />
+                    <span asp-validation-for="PricePerSeat" class="text-danger"></span>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-group">
+                    <label asp-for="Notes">Notes</label>
+                    <input asp-for="Notes" />
+                </div>
+
+            </div>
+
+            <button type="submit" class="btn-search">
+                Publish Trip
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
