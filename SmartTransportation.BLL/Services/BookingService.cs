@@ -58,35 +58,51 @@ namespace SmartTransportation.BLL.Services
             var trip = await _unitOfWork.Trips.GetByIdAsync(createDto.TripId)
                 ?? throw new NotFoundException("Trip", createDto.TripId);
 
-            // Validate user exists
+            // Validate booker exists
             _ = await _unitOfWork.Users.GetByIdAsync(bookerUserId)
                 ?? throw new NotFoundException("User", bookerUserId);
 
-            // ------------- PASSENGER LOGIC -------------
+            // ----------------- PASSENGER LOGIC -----------------
             var passengerIds = createDto.PassengerUserIds?.ToList() ?? new List<int>();
 
-            // Add booker if missing
+            // Always include the booker
             if (!passengerIds.Contains(bookerUserId))
                 passengerIds.Add(bookerUserId);
 
             // Remove duplicates
             passengerIds = passengerIds.Distinct().ToList();
 
-            // Validate seats >= passengers
-            if (createDto.SeatsCount < passengerIds.Count)
-                throw new ValidationException("SeatsCount", "SeatsCount cannot be less than number of passengers.");
+            // Ensure SeatsCount >= 1
+            if (createDto.SeatsCount < 1)
+                throw new ValidationException("SeatsCount", "SeatsCount must be at least 1.");
 
-            // Validate all passengers exist
+            // Only validate booker exists
+            var bookerExists = await _unitOfWork.Users.GetByIdAsync(bookerUserId);
+            if (bookerExists == null)
+                throw new NotFoundException("User", bookerUserId);
+
+            // For other passengers, skip validation for unregistered users
+            var validPassengerIds = new List<int> { bookerUserId }; // start with booker
+
             foreach (var pid in passengerIds)
             {
-                var exists = await _unitOfWork.Users.GetByIdAsync(pid);
-                if (exists == null)
-                    throw new ValidationException("PassengerUserIds", $"Passenger {pid} does not exist.");
+                if (pid == bookerUserId) continue; // already included
+
+                var userExists = await _unitOfWork.Users.GetByIdAsync(pid);
+                if (userExists != null)
+                    validPassengerIds.Add(pid);
+                // else skip; could store for later registration
             }
 
-            // Check available seats
+            // Ensure seats >= registered passengers
+            if (createDto.SeatsCount < validPassengerIds.Count)
+                throw new ValidationException("SeatsCount", "SeatsCount cannot be less than number of registered passengers.");
+
+            // Check trip availability
             if (trip.AvailableSeats < createDto.SeatsCount)
                 throw new ValidationException("SeatsCount", "Not enough available seats for this trip.");
+
+            // Continue with creating the booking as usual
 
             // Create booking
             var booking = new Booking
@@ -104,7 +120,7 @@ namespace SmartTransportation.BLL.Services
             await _unitOfWork.SaveAsync();
 
             // Add passengers
-            foreach (var pid in passengerIds)
+            foreach (var pid in validPassengerIds)
             {
                 await _unitOfWork.BookingPassengers.AddAsync(new BookingPassenger
                 {
@@ -115,7 +131,7 @@ namespace SmartTransportation.BLL.Services
                 });
             }
 
-            // Add segments if provided
+            // Add segments
             if (createDto.SegmentIds != null)
             {
                 foreach (var segmentId in createDto.SegmentIds)
