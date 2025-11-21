@@ -9,7 +9,7 @@ namespace SmartTransportation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Require authentication for all actions
+    //[Authorize] // Require authentication for all actions
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
@@ -132,7 +132,7 @@ namespace SmartTransportation.Controllers
 
         // ---------------- UPDATE BOOKING ----------------
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Passenger")] // Admin or Passenger can update booking
+      //  [Authorize(Roles = "Admin,Passenger")] // Admin or Passenger can update booking
         public async Task<ActionResult<BookingResponseDto>> UpdateBooking(int id, [FromBody] UpdateBookingDto updateDto)
         {
             try

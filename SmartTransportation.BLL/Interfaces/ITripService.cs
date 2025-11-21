@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SmartTransportation.BLL.DTOs.Trip;
@@ -7,7 +8,9 @@ namespace SmartTransportation.BLL.Interfaces
 {
     public interface ITripService
     {
-        Task<TripDetailsDTO> CreateTripAsync(CreateTripDTO tripDto);
+        // Create trip using driverId from authenticated user
+        Task<TripDetailsDTO> CreateTripAsync(CreateTripDTO tripDto, int driverId);
+
         Task<TripDetailsDTO?> GetTripDetailsByIdAsync(int tripId);
         Task<IEnumerable<TripDetailsDTO>> GetTripsByRouteIdAsync(int routeId);
         Task<TripDetailsDTO> StartTripAsync(int tripId);
@@ -18,7 +21,6 @@ namespace SmartTransportation.BLL.Interfaces
             string? to,
             DateTime? date,
             int passengers);
-
 
         // Optional pagination
         Task<PagedResult<TripDetailsDTO>> GetPagedTripsAsync(

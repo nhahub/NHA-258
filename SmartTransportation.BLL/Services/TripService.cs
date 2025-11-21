@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using SmartTransportation.BLL.DTOs.Location;
 using SmartTransportation.BLL.DTOs.Trip;
 using SmartTransportation.BLL.Exceptions;
@@ -9,6 +10,7 @@ using SmartTransportation.DAL.Repositories.UnitOfWork;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.BLL.Services
@@ -26,35 +28,56 @@ namespace SmartTransportation.BLL.Services
             _mapper = mapper;
         }
 
-        public async Task<TripDetailsDTO> CreateTripAsync(CreateTripDTO tripDto)
+        // -------------------------------
+        // Create trip (driver only)
+        // -------------------------------
+        public async Task<TripDetailsDTO> CreateTripAsync(CreateTripDTO tripDto, int driverId)
         {
+            var driver = await _unitOfWork.Users.GetByIdAsync(driverId);
+            if (driver == null) throw new BusinessException($"Driver {driverId} not found.");
+
             var route = await _routeService.GetRouteDetailsByIdAsync(tripDto.RouteId);
             if (route == null) throw new BusinessException($"Route {tripDto.RouteId} not found.");
 
-            var driver = await _unitOfWork.Users.GetByIdAsync(tripDto.DriverId);
-            if (driver == null) throw new BusinessException($"Driver {tripDto.DriverId} not found.");
-
             var trip = _mapper.Map<Trip>(tripDto);
+            trip.DriverId = driverId;
+            trip.Status = "Scheduled";
+            trip.CreatedAt = DateTime.UtcNow;
+
             await _unitOfWork.Trips.AddAsync(trip);
             await _unitOfWork.SaveAsync();
 
-            return await GetTripDetailsByIdAsync(trip.TripId) ?? throw new BusinessException("Failed to create trip");
+            return await GetTripDetailsByIdAsync(trip.TripId)
+                   ?? throw new BusinessException("Failed to create trip");
         }
 
+        // -------------------------------
+        // Get trip details by Id
+        // -------------------------------
         public async Task<TripDetailsDTO?> GetTripDetailsByIdAsync(int tripId)
         {
             var trip = await _unitOfWork.Trips.GetByIdAsync(tripId);
             if (trip == null) return null;
 
             var tripDto = _mapper.Map<TripDetailsDTO>(trip);
+
+            // Route details with segments, weather, map locations
             tripDto.Route = await _routeService.GetRouteDetailsByIdAsync(trip.RouteId);
 
+            // Trip locations
             var locations = await _unitOfWork.TripLocations.GetLocationsByTripIdAsync(tripId);
             tripDto.TripLocations = _mapper.Map<List<TripLocationDTO>>(locations);
+
+            // Optional: driver info
+            var driverProfile = await _unitOfWork.UserProfiles.GetByUserIdAsync(trip.DriverId);
+            tripDto.DriverName = driverProfile?.FullName ?? "Unknown Driver";
 
             return tripDto;
         }
 
+        // -------------------------------
+        // Get trips by route
+        // -------------------------------
         public async Task<IEnumerable<TripDetailsDTO>> GetTripsByRouteIdAsync(int routeId)
         {
             var trips = await _unitOfWork.Trips.GetTripsByRouteIdAsync(routeId);
@@ -69,6 +92,9 @@ namespace SmartTransportation.BLL.Services
             return tripDtos;
         }
 
+        // -------------------------------
+        // Start a trip (driver only)
+        // -------------------------------
         public async Task<TripDetailsDTO> StartTripAsync(int tripId)
         {
             var trip = await _unitOfWork.Trips.GetByIdAsync(tripId)
@@ -83,9 +109,13 @@ namespace SmartTransportation.BLL.Services
             _unitOfWork.Trips.Update(trip);
             await _unitOfWork.SaveAsync();
 
-            return await GetTripDetailsByIdAsync(tripId) ?? throw new BusinessException("Failed to start trip");
+            return await GetTripDetailsByIdAsync(tripId)
+                   ?? throw new BusinessException("Failed to start trip");
         }
 
+        // -------------------------------
+        // Complete a trip (driver only)
+        // -------------------------------
         public async Task<TripDetailsDTO> CompleteTripAsync(int tripId)
         {
             var trip = await _unitOfWork.Trips.GetByIdAsync(tripId)
@@ -100,10 +130,78 @@ namespace SmartTransportation.BLL.Services
             _unitOfWork.Trips.Update(trip);
             await _unitOfWork.SaveAsync();
 
-            return await GetTripDetailsByIdAsync(tripId) ?? throw new BusinessException("Failed to complete trip");
+            return await GetTripDetailsByIdAsync(tripId)
+                   ?? throw new BusinessException("Failed to complete trip");
         }
 
-        // Optional: paginated trips
+        // -------------------------------
+        // Search trips
+        // -------------------------------
+        public async Task<List<TripSearchResultDto>> SearchTripsAsync(string? from, string? to, DateTime? date, int passengers)
+        {
+            var trips = await _unitOfWork.Trips
+                .GetQueryable()
+                .Include(t => t.Route)
+                .Include(t => t.Driver).ThenInclude(d => d.UserProfile)
+                .Include(t => t.Driver).ThenInclude(d => d.Vehicles)
+                .Include(t => t.Bookings)
+                .Where(t =>
+                    (string.IsNullOrWhiteSpace(from) || t.Route.StartLocation.Contains(from)) &&
+                    (string.IsNullOrWhiteSpace(to) || t.Route.EndLocation.Contains(to)) &&
+                    (!date.HasValue || t.StartTime.Date == date.Value.Date) &&
+                    (passengers <= 0 || t.AvailableSeats >= passengers)
+                )
+                .OrderBy(t => t.StartTime)
+                .ToListAsync();
+
+            if (!trips.Any()) return new List<TripSearchResultDto>();
+
+            var driverIds = trips.Select(t => t.DriverId).Distinct().ToList();
+            var allDriverRatings = await _unitOfWork.Ratings.GetForDriversAsync(driverIds);
+            var ratingLookup = allDriverRatings.GroupBy(r => r.Trip.DriverId)
+                                               .ToDictionary(g => g.Key, g => new { Average = g.Average(r => r.Score!.Value), Count = g.Count() });
+
+            return trips.Select(t =>
+            {
+                var driver = t.Driver;
+                var profile = driver?.UserProfile;
+                var vehicle = driver?.Vehicles.FirstOrDefault(v => v.IsVerified) ?? driver?.Vehicles.FirstOrDefault();
+
+                int maxPassengers = vehicle?.SeatsCount ?? t.AvailableSeats;
+
+                double driverRating = 0;
+                int totalReviews = 0;
+                if (ratingLookup.TryGetValue(t.DriverId, out var stats))
+                {
+                    driverRating = stats.Average;
+                    totalReviews = stats.Count;
+                }
+
+                string driverName = profile?.FullName ?? "Unknown Driver";
+                string vehicleType = vehicle != null ? $"{vehicle.VehicleMake} {vehicle.VehicleModel}" : "Unknown Vehicle";
+
+                return new TripSearchResultDto
+                {
+                    TripId = t.TripId,
+                    FromLocation = t.Route?.StartLocation ?? "",
+                    ToLocation = t.Route?.EndLocation ?? "",
+                    DepartureDate = t.StartTime.Date,
+                    DepartureTime = t.StartTime.ToString("HH:mm"),
+                    MaxPassengers = maxPassengers,
+                    AvailableSeats = t.AvailableSeats,
+                    NumberOfBookings = t.Bookings?.Count() ?? 0,
+                    Price = t.PricePerSeat,
+                    VehicleType = vehicleType,
+                    DriverName = driverName,
+                    DriverRating = driverRating,
+                    TotalReviews = totalReviews
+                };
+            }).ToList();
+        }
+
+        // -------------------------------
+        // Pagination
+        // -------------------------------
         public async Task<PagedResult<TripDetailsDTO>> GetPagedTripsAsync(string? search, int pageNumber, int pageSize)
         {
             var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(
@@ -113,134 +211,20 @@ namespace SmartTransportation.BLL.Services
                 q => q.OrderBy(t => t.StartTime)
             );
 
+            var tripDtos = new List<TripDetailsDTO>();
+            foreach (var trip in pagedTrips.Items)
+            {
+                var details = await GetTripDetailsByIdAsync(trip.TripId);
+                if (details != null) tripDtos.Add(details);
+            }
+
             return new PagedResult<TripDetailsDTO>
             {
-                Items = pagedTrips.Items.Select(t => _mapper.Map<TripDetailsDTO>(t)),
+                Items = tripDtos,
                 TotalCount = pagedTrips.TotalCount,
                 PageNumber = pagedTrips.PageNumber,
                 PageSize = pagedTrips.PageSize
             };
         }
-
-        public async Task<List<TripSearchResultDto>> SearchTripsAsync(string? from,string? to,DateTime? date,int passengers)
-        {
-            // 1) Load trips matching the filters
-            var pagedTrips = await _unitOfWork.Trips.GetPagedAsync(
-                t =>
-                    (string.IsNullOrWhiteSpace(from) || t.Route.StartLocation.Contains(from)) &&
-                    (string.IsNullOrWhiteSpace(to) || t.Route.EndLocation.Contains(to)) &&
-                    (!date.HasValue || t.StartTime.Date == date.Value.Date) &&
-                    (passengers <= 0 || t.AvailableSeats >= passengers),
-
-                pageNumber: 1,
-                pageSize: 1000,
-                orderBy: q => q.OrderBy(t => t.StartTime),
-
-                // Includes
-                t => t.Bookings,
-                t => t.Driver,
-                t => t.Driver.UserProfile,
-                t => t.Driver.Vehicles,
-                t => t.Route
-            );
-
-            var trips = pagedTrips.Items;
-
-            if (!trips.Any())
-                return new List<TripSearchResultDto>();
-
-            // ---------------------------------------------------------
-            // 2) Collect all drivers from these trips
-            // ---------------------------------------------------------
-            var driverIds = trips
-                .Select(t => t.DriverId)
-                .Distinct()
-                .ToList();
-
-            // ---------------------------------------------------------
-            // 3) Get ALL ratings for ALL those drivers' trips
-            // ---------------------------------------------------------
-            var allDriverRatings = await _unitOfWork.Ratings.GetForDriversAsync(driverIds);
-
-            // ---------------------------------------------------------
-            // 4) Group ratings by DriverId (overall driver rating)
-            // ---------------------------------------------------------
-            var ratingLookup = allDriverRatings
-                .GroupBy(r => r.Trip.DriverId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => new
-                    {
-                        Average = g.Average(r => r.Score!.Value),
-                        Count = g.Count()
-                    }
-                );
-
-            // ---------------------------------------------------------
-            // 5) Map to DTO
-            // ---------------------------------------------------------
-            var result = trips.Select(t =>
-            {
-                var driver = t.Driver;
-                var driverProfile = driver?.UserProfile;
-
-                // Select vehicle (prefer verified)
-                var vehicle =
-                    driver?.Vehicles.FirstOrDefault(v => v.IsVerified)
-                    ?? driver?.Vehicles.FirstOrDefault();
-
-                // Max seats = vehicle seats if exists
-                var maxPassengers = vehicle?.SeatsCount ?? t.AvailableSeats;
-
-                // Fetch overall rating from lookup
-                double driverRating = 0;
-                int totalReviews = 0;
-
-                if (ratingLookup.TryGetValue(t.DriverId, out var stats))
-                {
-                    driverRating = stats.Average;
-                    totalReviews = stats.Count;
-                }
-
-                // Driver name safely
-                var driverName = string.IsNullOrWhiteSpace(driverProfile?.FullName)
-                    ? "Unknown Driver"
-                    : driverProfile.FullName;
-
-                // Vehicle type text
-                var vehicleType = vehicle != null
-                    ? $"{vehicle.VehicleMake} {vehicle.VehicleModel}"
-                    : "Unknown Vehicle";
-
-                return new TripSearchResultDto
-                {
-                    TripId = t.TripId,
-
-                    FromLocation = t.Route?.StartLocation ?? "",
-                    ToLocation = t.Route?.EndLocation ?? "",
-
-                    DepartureDate = t.StartTime.Date,
-                    DepartureTime = t.StartTime.ToString("HH:mm"),
-
-                    MaxPassengers = maxPassengers,
-                    AvailableSeats = t.AvailableSeats,
-                    NumberOfBookings = t.Bookings?.Count() ?? 0,
-
-                    Price = t.PricePerSeat,
-
-                    VehicleType = vehicleType,
-
-                    DriverName = driverName,
-                    DriverRating = driverRating,
-                    TotalReviews = totalReviews
-                };
-            }).ToList();
-
-            return result;
-        }
-
     }
-
-
 }
-
