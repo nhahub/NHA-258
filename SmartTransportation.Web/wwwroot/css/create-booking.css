@@ -1,0 +1,179 @@
+﻿/* ------------------------------------------
+   Shared Layout (same as Search Page)
+------------------------------------------- */
+
+.search-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+.search-header {
+    background: linear-gradient(135deg, #5b6fd8 0%, #4a5ab8 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 40px;
+    margin-bottom: 32px;
+}
+
+.search-form {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 24px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+    .form-group label {
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--gray-700);
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 12px;
+        border: 2px solid var(--gray-200);
+        border-radius: 8px;
+        font-size: 15px;
+    }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+.btn-search {
+    width: 100%;
+    padding: 14px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+    .btn-search:hover {
+        background: var(--primary-dark);
+    }
+
+
+/* ------------------------------------------
+   Route Overview Cards (same as Trip Cards)
+------------------------------------------- */
+
+.results-section {
+    margin-top: 32px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.trip-result-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+}
+
+    .trip-result-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+.trip-result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.route-info {
+    flex: 1;
+}
+
+.route-path {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+}
+
+.route-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--gray-600);
+}
+
+.price-box {
+    text-align: right;
+}
+
+.price {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.price-label {
+    font-size: 12px;
+    color: var(--gray-600);
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray-600);
+}
+
+
+/* ------------------------------------------
+   Responsive
+------------------------------------------- */
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-result-header {
+        flex-direction: column;
+        text-align: left;
+    }
+
+    .price-box {
+        margin-top: 12px;
+        text-align: left;
+    }
+}

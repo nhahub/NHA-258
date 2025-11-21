@@ -1,0 +1,137 @@
+﻿@page
+@model SmartTransportation.Web.Pages.Bookings.CreateModel
+
+@{
+    ViewData["Title"] = "Book Trip";
+}
+
+<link rel="stylesheet" href="~/css/create-booking.css" />
+
+<div class="search-container">
+
+    <!-- Header: same style as search page -->
+    <div class="search-header">
+        <h1>Confirm Your Booking</h1>
+
+        @if (Model.Trip?.Route != null)
+        {
+            <p class="route-path">
+                @Model.Trip.Route.StartLocation → @Model.Trip.Route.EndLocation
+            </p>
+
+            <p>
+                <strong>Departure:</strong>
+                @Model.Trip.StartTime.ToString("ddd, dd MMM yyyy • HH:mm")
+            </p>
+
+            <p>
+                <strong>Available seats:</strong> @Model.Trip.AvailableSeats
+            </p>
+        }
+        else
+        {
+            <p>Select your segment and passengers to continue.</p>
+        }
+    </div>
+
+    <!-- Main form card: uses search-form + form-grid + form-group + btn-search -->
+    <div class="search-form">
+
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="no-results" style="padding:16px; margin-bottom:16px;">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" asp-for="TripId" />
+            <input type="hidden" asp-for="Passengers" />
+
+            <div class="form-grid">
+                <!-- From stop -->
+                <div class="form-group">
+                    <label asp-for="FromStopIndex">From</label>
+                    <select asp-for="FromStopIndex">
+                        @foreach (var stop in Model.Stops)
+                        {
+                            <option value="@stop.Index">@stop.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="FromStopIndex" class="text-danger"></span>
+                </div>
+
+                <!-- To stop -->
+                <div class="form-group">
+                    <label asp-for="ToStopIndex">To</label>
+                    <select asp-for="ToStopIndex">
+                        @foreach (var stop in Model.Stops)
+                        {
+                            <option value="@stop.Index">@stop.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="ToStopIndex" class="text-danger"></span>
+                </div>
+
+                <!-- Seats -->
+                <div class="form-group">
+                    <label asp-for="SeatsCount">Passengers</label>
+                    <input asp-for="SeatsCount" type="number" min="1" max="20" />
+                    <span asp-validation-for="SeatsCount" class="text-danger"></span>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-search">
+                Confirm &amp; Continue to Payment
+            </button>
+        </form>
+    </div>
+
+    <!-- Route segments overview: styled like trip cards -->
+    @if (Model.Segments.Any())
+    {
+        <div class="results-section">
+            <div class="results-header">
+                <h3>Route segments</h3>
+            </div>
+
+            @foreach (var seg in Model.Segments.OrderBy(s => s.SegmentOrder))
+            {
+                <div class="trip-result-card">
+                    <div class="trip-result-header">
+                        <div class="route-info">
+                            <div class="route-path">
+                                @seg.StartPoint → @seg.EndPoint
+                            </div>
+
+                            <div class="route-details">
+                                <div class="detail-item">
+                                    <span>Segment #@seg.SegmentOrder</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span>Distance: @((seg.DistanceKm ?? 0).ToString("0.0")) km</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="price-box">
+                            <div class="price">
+                                @((seg.DistanceKm ?? 0).ToString("0.0")) km
+                            </div>
+                            <div class="price-label">
+                                segment distance
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
