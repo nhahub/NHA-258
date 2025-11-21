@@ -4,12 +4,15 @@ using SmartTransportation.BLL.DTOs.Booking;
 using SmartTransportation.BLL.Exceptions;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models.Common;
+using System.Security.Claims;
+using System;
+using System.Threading.Tasks;
 
 namespace SmartTransportation.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
-    //[Authorize] // Require authentication for all actions
+    [Route("api/[controller]")]
+    [Authorize] // نفس TripsController – كل التوكينات مطلوبة
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
@@ -19,190 +22,119 @@ namespace SmartTransportation.Controllers
             _bookingService = bookingService;
         }
 
-        // ---------------- GET PAGED BOOKINGS ----------------
-        [HttpGet("paged")]
-        [Authorize(Roles = "Admin")] // Only Admin can see all bookings paged
-        public async Task<ActionResult<PagedResult<BookingResponseDto>>> GetPagedBookings(
-            [FromQuery] string? search,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        private int? GetCurrentUserId()
         {
-            try
-            {
-                var pagedBookings = await _bookingService.GetPagedBookingsAsync(search, pageNumber, pageSize);
-                return Ok(pagedBookings);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while retrieving paged bookings.", error = ex.Message });
-            }
+            var claim = User.FindFirst("UserId")
+                        ?? User.FindFirst("UserID")
+                        ?? User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (claim != null && int.TryParse(claim.Value, out int userId))
+                return userId;
+
+            return null;
         }
 
-        // ---------------- GET ALL BOOKINGS ----------------
-        [HttpGet]
-        [Authorize(Roles = "Admin")] // Only Admin can get all bookings
-        public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetAllBookings()
+        // ---------------- CREATE BOOKING (Passenger only) ----------------
+        [HttpPost]
+        [Authorize(Roles = "Passenger")]
+        public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new
+                {
+                    Error = "BadRequest",
+                    Message = "Invalid booking data.",
+                    Details = ModelState
+                });
+
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or user ID." });
+
             try
             {
-                var bookings = await _bookingService.GetAllBookingsAsync();
-                return Ok(bookings);
+                var booking = await _bookingService.CreateBookingAsync(dto, userId.Value);
+                return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, booking);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while retrieving bookings.", error = ex.Message });
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
 
         // ---------------- GET BOOKING BY ID ----------------
         [HttpGet("{id}")]
-        public async Task<ActionResult<BookingResponseDto>> GetBookingById(int id)
+        [AllowAnonymous] // زي TripsController
+        public async Task<IActionResult> GetBookingById(int id)
         {
-            try
-            {
-                var booking = await _bookingService.GetBookingByIdAsync(id);
-                if (booking == null)
-                    return NotFound(new { message = $"Booking with ID {id} was not found." });
+            var booking = await _bookingService.GetBookingByIdAsync(id);
+            if (booking == null) return NotFound();
 
-                return Ok(booking);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while retrieving the booking.", error = ex.Message });
-            }
+            return Ok(booking);
         }
 
         // ---------------- GET BOOKINGS BY USER ----------------
         [HttpGet("user/{userId}")]
-        public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetBookingsByUserId(int userId)
+        public async Task<IActionResult> GetBookingsByUser(int userId)
         {
-            try
-            {
-                var bookings = await _bookingService.GetBookingsByUserIdAsync(userId);
-                return Ok(bookings);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while retrieving user bookings.", error = ex.Message });
-            }
+            var bookings = await _bookingService.GetBookingsByUserIdAsync(userId);
+            return Ok(bookings);
         }
 
         // ---------------- GET BOOKINGS BY TRIP ----------------
         [HttpGet("trip/{tripId}")]
-        [Authorize(Roles = "Admin,Driver")] // Only Admin or Driver can get bookings by trip
-        public async Task<ActionResult<IEnumerable<BookingResponseDto>>> GetBookingsByTripId(int tripId)
+        [Authorize(Roles = "Driver,Admin")]
+        public async Task<IActionResult> GetBookingsByTrip(int tripId)
         {
-            try
-            {
-                var bookings = await _bookingService.GetBookingsByTripIdAsync(tripId);
-                return Ok(bookings);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while retrieving trip bookings.", error = ex.Message });
-            }
+            var bookings = await _bookingService.GetBookingsByTripIdAsync(tripId);
+            return Ok(bookings);
         }
 
-        // ---------------- CREATE BOOKING ----------------
-        [HttpPost]
-        [Authorize(Roles = "Passenger")] // Only Passenger can create booking
-        public async Task<ActionResult<BookingResponseDto>> CreateBooking([FromBody] CreateBookingDto createDto)
+        // ---------------- PAGED BOOKINGS (Admin) ----------------
+        [HttpGet("paged")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<PagedResult<BookingResponseDto>>> GetPagedBookings(
+            [FromQuery] string? search,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-
-                var booking = await _bookingService.CreateBookingAsync(createDto);
-                return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, booking);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message, errors = ex.Errors });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while creating the booking.", error = ex.Message });
-            }
+            var paged = await _bookingService.GetPagedBookingsAsync(search, pageNumber, pageSize);
+            return Ok(paged);
         }
 
-        // ---------------- UPDATE BOOKING ----------------
-        [HttpPut("{id}")]
-      //  [Authorize(Roles = "Admin,Passenger")] // Admin or Passenger can update booking
-        public async Task<ActionResult<BookingResponseDto>> UpdateBooking(int id, [FromBody] UpdateBookingDto updateDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(ModelState);
-
-                var booking = await _bookingService.UpdateBookingAsync(id, updateDto);
-                if (booking == null)
-                    return NotFound(new { message = $"Booking with ID {id} was not found." });
-
-                return Ok(booking);
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (ValidationException ex)
-            {
-                return BadRequest(new { message = ex.Message, errors = ex.Errors });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An error occurred while updating the booking.", error = ex.Message });
-            }
-        }
-
-        // ---------------- CANCEL BOOKING ----------------
+        // ---------------- CANCEL BOOKING (Passenger) ----------------
         [HttpPost("{id}/cancel")]
-        [Authorize(Roles = "Passenger")] // Only Passenger can cancel their booking
-        public async Task<ActionResult> CancelBooking(int id)
+        [Authorize(Roles = "Passenger")]
+        public async Task<IActionResult> CancelBooking(int id)
         {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+                return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or user ID." });
+
             try
             {
                 var result = await _bookingService.CancelBookingAsync(id);
-                if (!result)
-                    return NotFound(new { message = $"Booking with ID {id} was not found." });
-
-                return Ok(new { message = "Booking cancelled successfully." });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
+                return Ok(new { Message = "Booking cancelled successfully." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while cancelling the booking.", error = ex.Message });
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
 
-        // ---------------- DELETE BOOKING ----------------
+        // ---------------- DELETE BOOKING (Admin) ----------------
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")] // Only Admin can delete bookings
-        public async Task<ActionResult> DeleteBooking(int id)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteBooking(int id)
         {
             try
             {
                 var result = await _bookingService.DeleteBookingAsync(id);
-                if (!result)
-                    return NotFound(new { message = $"Booking with ID {id} was not found." });
-
-                return Ok(new { message = "Booking deleted successfully." });
-            }
-            catch (NotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
+                return Ok(new { Message = "Booking deleted successfully." });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "An error occurred while deleting the booking.", error = ex.Message });
+                return BadRequest(new { Error = "Error", Message = ex.Message });
             }
         }
     }

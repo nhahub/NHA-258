@@ -52,15 +52,37 @@ namespace SmartTransportation.BLL.Services
         }
 
         // -------------------- CREATE --------------------
-        public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto createDto)
+        public async Task<BookingResponseDto> CreateBookingAsync(CreateBookingDto createDto, int bookerUserId)
         {
             // Validate trip exists
             var trip = await _unitOfWork.Trips.GetByIdAsync(createDto.TripId)
                 ?? throw new NotFoundException("Trip", createDto.TripId);
 
             // Validate user exists
-            var user = await _unitOfWork.Users.GetByIdAsync(createDto.BookerUserId)
-                ?? throw new NotFoundException("User", createDto.BookerUserId);
+            _ = await _unitOfWork.Users.GetByIdAsync(bookerUserId)
+                ?? throw new NotFoundException("User", bookerUserId);
+
+            // ------------- PASSENGER LOGIC -------------
+            var passengerIds = createDto.PassengerUserIds?.ToList() ?? new List<int>();
+
+            // Add booker if missing
+            if (!passengerIds.Contains(bookerUserId))
+                passengerIds.Add(bookerUserId);
+
+            // Remove duplicates
+            passengerIds = passengerIds.Distinct().ToList();
+
+            // Validate seats >= passengers
+            if (createDto.SeatsCount < passengerIds.Count)
+                throw new ValidationException("SeatsCount", "SeatsCount cannot be less than number of passengers.");
+
+            // Validate all passengers exist
+            foreach (var pid in passengerIds)
+            {
+                var exists = await _unitOfWork.Users.GetByIdAsync(pid);
+                if (exists == null)
+                    throw new ValidationException("PassengerUserIds", $"Passenger {pid} does not exist.");
+            }
 
             // Check available seats
             if (trip.AvailableSeats < createDto.SeatsCount)
@@ -70,7 +92,7 @@ namespace SmartTransportation.BLL.Services
             var booking = new Booking
             {
                 TripId = createDto.TripId,
-                BookerUserId = createDto.BookerUserId,
+                BookerUserId = bookerUserId,
                 BookingDate = DateTime.UtcNow,
                 BookingStatus = "Pending",
                 PaymentStatus = "Pending",
@@ -78,30 +100,23 @@ namespace SmartTransportation.BLL.Services
                 SeatsCount = createDto.SeatsCount
             };
 
-
             await _unitOfWork.Bookings.AddAsync(booking);
             await _unitOfWork.SaveAsync();
 
-            // Add passengers if provided
-            if (createDto.PassengerUserIds != null && createDto.PassengerUserIds.Any())
+            // Add passengers
+            foreach (var pid in passengerIds)
             {
-                foreach (var passengerId in createDto.PassengerUserIds)
+                await _unitOfWork.BookingPassengers.AddAsync(new BookingPassenger
                 {
-                    var passenger = await _unitOfWork.Users.GetByIdAsync(passengerId);
-                    if (passenger != null)
-                    {
-                        await _unitOfWork.BookingPassengers.AddAsync(new BookingPassenger
-                        {
-                            BookingId = booking.BookingId,
-                            PassengerUserId = passengerId,
-                            CheckInStatus = false
-                        });
-                    }
-                }
+                    BookingId = booking.BookingId,
+                    PassengerUserId = pid,
+                    SeatNumber = null,
+                    CheckInStatus = false
+                });
             }
 
             // Add segments if provided
-            if (createDto.SegmentIds != null && createDto.SegmentIds.Any())
+            if (createDto.SegmentIds != null)
             {
                 foreach (var segmentId in createDto.SegmentIds)
                 {
@@ -134,7 +149,6 @@ namespace SmartTransportation.BLL.Services
             var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
                 ?? throw new NotFoundException("Booking", bookingId);
 
-            // Update properties
             if (!string.IsNullOrEmpty(updateDto.BookingStatus))
                 booking.BookingStatus = updateDto.BookingStatus;
 
@@ -149,11 +163,11 @@ namespace SmartTransportation.BLL.Services
                 var trip = await _unitOfWork.Trips.GetByIdAsync(booking.TripId);
                 if (trip != null)
                 {
-                    var seatDifference = updateDto.SeatsCount.Value - booking.SeatsCount;
-                    if (trip.AvailableSeats < seatDifference)
+                    var seatDiff = updateDto.SeatsCount.Value - booking.SeatsCount;
+                    if (trip.AvailableSeats < seatDiff)
                         throw new ValidationException("SeatsCount", "Not enough available seats for this update.");
 
-                    trip.AvailableSeats -= seatDifference;
+                    trip.AvailableSeats -= seatDiff;
                     _unitOfWork.Trips.Update(trip);
                 }
                 booking.SeatsCount = updateDto.SeatsCount.Value;
@@ -167,7 +181,7 @@ namespace SmartTransportation.BLL.Services
             return MapToResponseDto(updatedBooking!);
         }
 
-        // -------------------- DELETE & CANCEL --------------------
+        // -------------------- DELETE --------------------
         public async Task<bool> DeleteBookingAsync(int bookingId)
         {
             var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
@@ -185,6 +199,7 @@ namespace SmartTransportation.BLL.Services
             return true;
         }
 
+        // -------------------- CANCEL --------------------
         public async Task<bool> CancelBookingAsync(int bookingId)
         {
             var booking = await _unitOfWork.Bookings.GetByIdAsync(bookingId)
@@ -207,10 +222,8 @@ namespace SmartTransportation.BLL.Services
         // -------------------- PAGINATION --------------------
         public async Task<PagedResult<BookingResponseDto>> GetPagedBookingsAsync(string? search, int pageNumber, int pageSize)
         {
-            // Start with IQueryable from repository
-            var query = _unitOfWork.Bookings.QueryBookingsWithDetails(); // This should return IQueryable<Booking>
+            var query = _unitOfWork.Bookings.QueryBookingsWithDetails();
 
-            // Apply search filter if provided
             if (!string.IsNullOrEmpty(search))
             {
                 query = query.Where(b =>
@@ -219,21 +232,17 @@ namespace SmartTransportation.BLL.Services
                 );
             }
 
-            // Get total count before pagination
             var totalCount = await query.CountAsync();
 
-            // Apply pagination
             var bookings = await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Include(b => b.BookerUser)
                 .Include(b => b.Trip)
-                .Include(b => b.BookingPassengers)
-                    .ThenInclude(bp => bp.PassengerUser)
+                .Include(b => b.BookingPassengers).ThenInclude(bp => bp.PassengerUser)
                 .Include(b => b.BookingSegments)
                 .ToListAsync();
 
-            // Map to DTOs
             var items = bookings.Select(MapToResponseDto).ToList();
 
             return new PagedResult<BookingResponseDto>
