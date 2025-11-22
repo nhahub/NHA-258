@@ -32,6 +32,9 @@ builder.Services.AddDbContext<TransportationContext>(options =>
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IUserProfileService, PassengerService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+
 
 // ===================
 // Authentication (Cookie)

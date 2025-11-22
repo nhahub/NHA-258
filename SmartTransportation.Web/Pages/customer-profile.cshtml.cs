@@ -1,98 +1,106 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
+using SmartTransportation.BLL.DTOs.Profile;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace SmartTransportation.Web.Pages
 {
-    public class Booking
-    {
-        public string ServiceType { get; set; } = string.Empty;
-        public DateTime BookingDate { get; set; }
-        public string BookingTime { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-    }
-
+    [Authorize(Roles = "Passenger")] // <-- CHANGE THIS
     public class Customer_ProfileModel : PageModel
     {
-        [BindProperty]
-        [Required]
-        public string FirstName { get; set; } = "Jane";
+        private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        [BindProperty]
-        [Required]
-        public string LastName { get; set; } = "Smith";
-
-        [BindProperty]
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = "jane.smith@example.com";
-
-        [BindProperty]
-        [Required]
-        [Phone]
-        public string Phone { get; set; } = "+1 (555) 987-6543";
-
-        [BindProperty]
-        public string Address { get; set; } = "123 Main Street, New York, NY 10001";
-
-        [BindProperty]
-        public string CardNumber { get; set; } = string.Empty;
-
-        [BindProperty]
-        public string ExpiryDate { get; set; } = string.Empty;
-
-        [BindProperty]
-        public string CVV { get; set; } = string.Empty;
-
-        public string FullName => $"{FirstName} {LastName}";
-        public string CustomerId { get; set; } = "CUST-12345";
-
-        public List<Booking> Bookings { get; set; } = new();
-
-        public string? SuccessMessage { get; set; }
-
-        public void OnGet()
+        public Customer_ProfileModel(IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
-            // TODO: Load customer data from database
-            // Sample bookings
-            Bookings = new List<Booking>
-            {
-                new Booking
-                {
-                    ServiceType = "Vehicle Ride - Airport Transfer",
-                    BookingDate = DateTime.Now.AddDays(2),
-                    BookingTime = "10:00 AM",
-                    Status = "Confirmed"
-                },
-                new Booking
-                {
-                    ServiceType = "Vehicle Maintenance",
-                    BookingDate = DateTime.Now.AddDays(7),
-                    BookingTime = "2:30 PM",
-                    Status = "Pending"
-                }
-            };
+            _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
-        public IActionResult OnPost()
+        [BindProperty] public string FullName { get; set; } = "";
+        [BindProperty] public string? Phone { get; set; }
+        [BindProperty] public string? Address { get; set; }
+        [BindProperty] public string? City { get; set; }
+        [BindProperty] public string? Country { get; set; }
+        [BindProperty] public DateOnly? DateOfBirth { get; set; }
+        [BindProperty] public string? Gender { get; set; }
+
+        [TempData] public string? SuccessMessage { get; set; }
+        [TempData] public string? ErrorMessage { get; set; }
+
+        public async Task<IActionResult> OnGetAsync()
         {
-            if (!ModelState.IsValid)
+            var token = Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                return RedirectToPage("/Log_In");
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var apiBaseUrl = _configuration["ApiBaseUrl"];
+            var response = await client.GetAsync($"{apiBaseUrl}/api/Passenger/profile"); // <-- API endpoint
+
+            if (!response.IsSuccessStatusCode)
             {
+                ErrorMessage = "Failed to load profile.";
                 return Page();
             }
 
-            // TODO: Update customer profile in database
-            SuccessMessage = "Profile updated successfully!";
-            OnGet(); // Reload bookings
+            var json = await response.Content.ReadAsStringAsync();
+            var passengerDto = JsonSerializer.Deserialize<BaseUserProfileDTO>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+
+            if (passengerDto != null)
+            {
+                FullName = passengerDto.FullName ?? "";
+                Phone = passengerDto.Phone;
+                Address = passengerDto.Address;
+                City = passengerDto.City;
+                Country = passengerDto.Country;
+                DateOfBirth = passengerDto.DateOfBirth;
+                Gender = passengerDto.Gender;
+            }
+
             return Page();
         }
 
-        public IActionResult OnPostUpdatePayment()
+        public async Task<IActionResult> OnPostAsync()
         {
-            // TODO: Update payment information in database
-            SuccessMessage = "Payment information updated successfully!";
-            OnGet(); // Reload bookings
-            return Page();
+            if (!ModelState.IsValid) return Page();
+
+            var token = Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                return RedirectToPage("/Log_In");
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var apiBaseUrl = _configuration["ApiBaseUrl"];
+            var dto = new UpdateUserProfileDTO
+            {
+                FullName = FullName,
+                Phone = Phone,
+                Address = Address,
+                City = City,
+                Country = Country,
+                DateOfBirth = DateOfBirth,
+                Gender = Gender
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var response = await client.PutAsync($"{apiBaseUrl}/api/Passenger/profile", content); // <-- API endpoint
+
+            if (response.IsSuccessStatusCode)
+                SuccessMessage = "Profile updated successfully!";
+            else
+                ErrorMessage = "Failed to update profile.";
+
+            return RedirectToPage();
         }
     }
 }
