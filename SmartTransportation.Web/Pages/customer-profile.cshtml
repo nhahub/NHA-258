@@ -176,6 +176,7 @@
         }
 
         <div class="profile-grid">
+            <!-- Personal Info -->
             <div class="profile-card">
                 <h2>Personal Information</h2>
                 <form method="post">
@@ -188,6 +189,14 @@
                     <div class="form-group"><label>Gender</label><input asp-for="Gender" type="text" /></div>
                     <button type="submit" class="btn">Update Profile</button>
                 </form>
+            </div>
+
+            <!-- Booking Stats -->
+            <div class="profile-card">
+                <h2>Booking Statistics</h2>
+                <p>Total Bookings: @Model.TotalBookings</p>
+                <p>Upcoming Bookings: @Model.UpcomingBookings</p>
+                <p>Completed Bookings: @Model.CompletedBookings</p>
             </div>
         </div>
     </div>

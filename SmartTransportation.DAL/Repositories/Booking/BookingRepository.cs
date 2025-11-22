@@ -28,11 +28,12 @@ namespace SmartTransportation.DAL.Repositories
         {
             return _dbSet
                 .Include(b => b.BookerUser)
-                .Include(b => b.Trip)
+                .Include(b => b.Trip) // essential!
                 .Include(b => b.BookingPassengers)
                     .ThenInclude(bp => bp.PassengerUser)
                 .Include(b => b.BookingSegments)
                 .Include(b => b.Payments);
         }
+
     }
 }

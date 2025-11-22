@@ -1,18 +1,19 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using SmartTransportation.BLL.DTOs.Booking;
 using SmartTransportation.BLL.Exceptions;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models.Common;
-using System.Security.Claims;
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // نفس TripsController – كل التوكينات مطلوبة
+    [Authorize] 
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
@@ -80,6 +81,25 @@ namespace SmartTransportation.Controllers
             var bookings = await _bookingService.GetBookingsByUserIdAsync(userId);
             return Ok(bookings);
         }
+        [HttpGet("user/{userId}/stats")]
+        [Authorize(Roles = "Passenger")]
+        public async Task<IActionResult> GetBookingStatsByUser(int userId)
+        {
+            var bookingsQuery = _bookingService.QueryBookingsByUserId(userId)
+                                .Where(b => b.Trip != null && b.BookingStatus != "Cancelled");
+
+            var total = await bookingsQuery.CountAsync();
+            var upcoming = await bookingsQuery.CountAsync(b => b.Trip.StartTime.ToUniversalTime() > DateTime.UtcNow);
+            var completed = await bookingsQuery.CountAsync(b => b.Trip.StartTime.ToUniversalTime() <= DateTime.UtcNow);
+
+            return Ok(new
+            {
+                TotalBookings = total,
+                UpcomingBookings = upcoming,
+                CompletedBookings = completed
+            });
+        }
+
 
         // ---------------- GET BOOKINGS BY TRIP ----------------
         [HttpGet("trip/{tripId}")]

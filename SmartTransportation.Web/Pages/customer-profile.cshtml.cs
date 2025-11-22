@@ -5,10 +5,11 @@ using SmartTransportation.BLL.DTOs.Profile;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace SmartTransportation.Web.Pages
 {
-    [Authorize(Roles = "Passenger")] // <-- CHANGE THIS
+    [Authorize(Roles = "Passenger")]
     public class Customer_ProfileModel : PageModel
     {
         private readonly IConfiguration _configuration;
@@ -20,6 +21,7 @@ namespace SmartTransportation.Web.Pages
             _httpClientFactory = httpClientFactory;
         }
 
+        // ----- Profile -----
         [BindProperty] public string FullName { get; set; } = "";
         [BindProperty] public string? Phone { get; set; }
         [BindProperty] public string? Address { get; set; }
@@ -27,6 +29,11 @@ namespace SmartTransportation.Web.Pages
         [BindProperty] public string? Country { get; set; }
         [BindProperty] public DateOnly? DateOfBirth { get; set; }
         [BindProperty] public string? Gender { get; set; }
+
+        // ----- Booking Stats -----
+        [BindProperty] public int TotalBookings { get; set; }
+        [BindProperty] public int UpcomingBookings { get; set; }
+        [BindProperty] public int CompletedBookings { get; set; }
 
         [TempData] public string? SuccessMessage { get; set; }
         [TempData] public string? ErrorMessage { get; set; }
@@ -41,8 +48,9 @@ namespace SmartTransportation.Web.Pages
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var apiBaseUrl = _configuration["ApiBaseUrl"];
-            var response = await client.GetAsync($"{apiBaseUrl}/api/Passenger/profile"); // <-- API endpoint
 
+            // ----- Load Profile -----
+            var response = await client.GetAsync($"{apiBaseUrl}/api/Passenger/profile");
             if (!response.IsSuccessStatusCode)
             {
                 ErrorMessage = "Failed to load profile.";
@@ -64,6 +72,28 @@ namespace SmartTransportation.Web.Pages
                 Country = passengerDto.Country;
                 DateOfBirth = passengerDto.DateOfBirth;
                 Gender = passengerDto.Gender;
+            }
+
+            // ----- Load Booking Stats -----
+            var userIdClaim = User.FindFirst("UserId")?.Value;
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                var statsResponse = await client.GetAsync($"{apiBaseUrl}/api/Bookings/user/{userId}/stats");
+                if (statsResponse.IsSuccessStatusCode)
+                {
+                    var statsJson = await statsResponse.Content.ReadAsStringAsync();
+                    var stats = JsonSerializer.Deserialize<BookingStatsDto>(statsJson, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+                    if (stats != null)
+                    {
+                        TotalBookings = stats.TotalBookings;
+                        UpcomingBookings = stats.UpcomingBookings;
+                        CompletedBookings = stats.CompletedBookings;
+                    }
+                }
             }
 
             return Page();
@@ -93,7 +123,7 @@ namespace SmartTransportation.Web.Pages
             };
 
             var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
-            var response = await client.PutAsync($"{apiBaseUrl}/api/Passenger/profile", content); // <-- API endpoint
+            var response = await client.PutAsync($"{apiBaseUrl}/api/Passenger/profile", content);
 
             if (response.IsSuccessStatusCode)
                 SuccessMessage = "Profile updated successfully!";
@@ -102,5 +132,12 @@ namespace SmartTransportation.Web.Pages
 
             return RedirectToPage();
         }
+    }
+
+    public class BookingStatsDto
+    {
+        public int TotalBookings { get; set; }
+        public int UpcomingBookings { get; set; }
+        public int CompletedBookings { get; set; }
     }
 }
