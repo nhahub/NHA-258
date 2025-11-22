@@ -5,6 +5,7 @@ using SmartTransportation.BLL.DTOs.Profile;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.Web.Pages
@@ -75,7 +76,7 @@ namespace SmartTransportation.Web.Pages
             }
 
             // ----- Load Booking Stats -----
-            var userIdClaim = User.FindFirst("UserId")?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value; // <-- updated
             if (int.TryParse(userIdClaim, out int userId))
             {
                 var statsResponse = await client.GetAsync($"{apiBaseUrl}/api/Bookings/user/{userId}/stats");

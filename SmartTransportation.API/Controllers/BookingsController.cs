@@ -6,15 +6,14 @@ using SmartTransportation.BLL.Exceptions;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models.Common;
 using System;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] 
-    public class BookingsController : ControllerBase
+    [Authorize]
+    public class BookingsController : BaseApiController
     {
         private readonly IBookingService _bookingService;
 
@@ -23,15 +22,9 @@ namespace SmartTransportation.Controllers
             _bookingService = bookingService;
         }
 
-        private int? GetCurrentUserId()
+        private IActionResult UnauthorizedIfNoUserId()
         {
-            var claim = User.FindFirst("UserId")
-                        ?? User.FindFirst("UserID")
-                        ?? User.FindFirst(ClaimTypes.NameIdentifier);
-
-            if (claim != null && int.TryParse(claim.Value, out int userId))
-                return userId;
-
+            if (CurrentUserId == null) return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or user ID." });
             return null;
         }
 
@@ -48,13 +41,12 @@ namespace SmartTransportation.Controllers
                     Details = ModelState
                 });
 
-            var userId = GetCurrentUserId();
-            if (userId == null)
-                return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or user ID." });
+            var unauthorized = UnauthorizedIfNoUserId();
+            if (unauthorized != null) return unauthorized;
 
             try
             {
-                var booking = await _bookingService.CreateBookingAsync(dto, userId.Value);
+                var booking = await _bookingService.CreateBookingAsync(dto, CurrentUserId.Value);
                 return CreatedAtAction(nameof(GetBookingById), new { id = booking.BookingId }, booking);
             }
             catch (Exception ex)
@@ -65,7 +57,7 @@ namespace SmartTransportation.Controllers
 
         // ---------------- GET BOOKING BY ID ----------------
         [HttpGet("{id}")]
-        [AllowAnonymous] // زي TripsController
+        [AllowAnonymous]
         public async Task<IActionResult> GetBookingById(int id)
         {
             var booking = await _bookingService.GetBookingByIdAsync(id);
@@ -81,16 +73,19 @@ namespace SmartTransportation.Controllers
             var bookings = await _bookingService.GetBookingsByUserIdAsync(userId);
             return Ok(bookings);
         }
+
         [HttpGet("user/{userId}/stats")]
         [Authorize(Roles = "Passenger")]
         public async Task<IActionResult> GetBookingStatsByUser(int userId)
         {
+            var now = DateTime.UtcNow;
+
             var bookingsQuery = _bookingService.QueryBookingsByUserId(userId)
                                 .Where(b => b.Trip != null && b.BookingStatus != "Cancelled");
 
             var total = await bookingsQuery.CountAsync();
-            var upcoming = await bookingsQuery.CountAsync(b => b.Trip.StartTime.ToUniversalTime() > DateTime.UtcNow);
-            var completed = await bookingsQuery.CountAsync(b => b.Trip.StartTime.ToUniversalTime() <= DateTime.UtcNow);
+            var upcoming = await bookingsQuery.CountAsync(b => b.Trip.StartTime > now);
+            var completed = await bookingsQuery.CountAsync(b => b.Trip.StartTime <= now);
 
             return Ok(new
             {
@@ -99,7 +94,6 @@ namespace SmartTransportation.Controllers
                 CompletedBookings = completed
             });
         }
-
 
         // ---------------- GET BOOKINGS BY TRIP ----------------
         [HttpGet("trip/{tripId}")]
@@ -127,9 +121,8 @@ namespace SmartTransportation.Controllers
         [Authorize(Roles = "Passenger")]
         public async Task<IActionResult> CancelBooking(int id)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-                return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or user ID." });
+            var unauthorized = UnauthorizedIfNoUserId();
+            if (unauthorized != null) return unauthorized;
 
             try
             {

@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
+using SmartTransportation.Web.Helpers;
 using System;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.Web.Pages.Payment
@@ -19,26 +21,23 @@ namespace SmartTransportation.Web.Pages.Payment
             _config = config;
         }
 
-        // Read from query string on GET
         [BindProperty(SupportsGet = true)]
         public int BookingId { get; set; }
 
-        // Filled from hidden input when Stripe creates PaymentMethod
         [BindProperty]
         public string PaymentMethodId { get; set; }
 
-        // For showing result UI
         [BindProperty]
         public string ResultStatus { get; set; }
 
         [BindProperty]
         public string ResultMessage { get; set; }
 
-        // For optional redirect after success
         public string RedirectUrl { get; set; }
 
-        // Stripe publishable key for JS
         public string StripePublishableKey => _config["Stripe:PublishableKey"];
+
+        private int? CurrentUserId => ClaimsHelper.GetUserId(User);
 
         public void OnGet(int bookingId)
         {
@@ -47,63 +46,87 @@ namespace SmartTransportation.Web.Pages.Payment
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (CurrentUserId == null)
+                return SetResult("Failed", "You must be logged in to pay for a booking.");
+
             if (BookingId <= 0 || string.IsNullOrWhiteSpace(PaymentMethodId))
-            {
-                ResultMessage = "Invalid booking or payment data.";
-                ResultStatus = "Failed";
-                return Page();
-            }
+                return SetResult("Failed", "Invalid booking or payment data.");
 
             var client = _httpClientFactory.CreateClient();
             var apiBase = _config["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is not configured.");
 
+            // Attach JWT token from session
+            var token = HttpContext.Session.GetString("JwtToken");
+            if (!string.IsNullOrEmpty(token))
+                client.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+            // 1️⃣ Verify booking ownership
+            BookingDto booking;
+            try
+            {
+                booking = await client.GetFromJsonAsync<BookingDto>($"{apiBase}/api/bookings/{BookingId}");
+                if (booking == null || booking.BookerUserId != CurrentUserId.Value)
+                    return SetResult("Failed", "This booking does not belong to you.");
+            }
+            catch
+            {
+                return SetResult("Failed", "Unable to verify booking ownership.");
+            }
+
+            // 2️⃣ Prepare Stripe request
             var apiRequest = new
             {
-                bookingId = BookingId,
-                paymentMethodId = PaymentMethodId
+                BookingId,
+                PaymentMethodId
             };
 
-            var response = await client.PostAsJsonAsync(
-                $"{apiBase}/api/StripePayment/create-and-confirm",
-                apiRequest
-            );
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                var error = await response.Content.ReadAsStringAsync();
-                ResultMessage = $"Payment failed: {error}";
-                ResultStatus = "Failed";
-                return Page();
+                var response = await client.PostAsJsonAsync($"{apiBase}/api/StripePayment/create-and-confirm", apiRequest);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string content = await response.Content.ReadAsStringAsync();
+                    try
+                    {
+                        var errorObj = JsonSerializer.Deserialize<ApiErrorDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        return SetResult("Failed", errorObj?.Message ?? $"Payment failed: {content}");
+                    }
+                    catch
+                    {
+                        return SetResult("Failed", $"Payment failed: {content}");
+                    }
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<CreateStripePaymentResponseDto>();
+                if (result == null)
+                    return SetResult("Failed", "Payment failed: empty API response.");
+
+                if (string.Equals(result.Status, "Succeeded", StringComparison.OrdinalIgnoreCase))
+                {
+                    ResultStatus = "Succeeded";
+                    ResultMessage = "Payment completed successfully 🎉";
+                    RedirectUrl = Url.Page("/customer-profile");
+                    return Page();
+                }
+
+                return SetResult(result.Status, $"Payment status: {result.Status}");
             }
-
-            var result = await response.Content.ReadFromJsonAsync<CreateStripePaymentResponseDto>();
-
-            if (result == null)
+            catch (Exception ex)
             {
-                ResultMessage = "Payment failed: empty API response.";
-                ResultStatus = "Failed";
-                return Page();
+                return SetResult("Failed", $"Payment failed: {ex.Message}");
             }
+        }
 
-            if (string.Equals(result.Status, "Succeeded", StringComparison.OrdinalIgnoreCase))
-            {
-                ResultMessage = "Payment completed successfully 🎉";
-                ResultStatus = "Succeeded";
-
-                // where you want to send them after success
-                RedirectUrl = Url.Page("/customer-profile");
-
-                return Page();
-            }
-
-            // Pending / Failed / other
-            ResultMessage = $"Payment status: {result.Status}";
-            ResultStatus = result.Status;
-
+        private IActionResult SetResult(string status, string message)
+        {
+            ResultStatus = status;
+            ResultMessage = message;
             return Page();
         }
 
-        // Local DTO matching your API response
+        // ---------------- DTOs ----------------
         private class CreateStripePaymentResponseDto
         {
             public int PaymentId { get; set; }
@@ -113,6 +136,17 @@ namespace SmartTransportation.Web.Pages.Payment
             public string Status { get; set; }
             public string ClientSecret { get; set; }
         }
+
+        private class BookingDto
+        {
+            public int BookingId { get; set; }
+            public int BookerUserId { get; set; }
+        }
+
+        private class ApiErrorDto
+        {
+            public string Message { get; set; }
+            public string Error { get; set; }
+        }
     }
 }
-

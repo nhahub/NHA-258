@@ -75,17 +75,19 @@ public class Log_InModel : PageModel
             // Create claims and sign in
             // ---------------------------
             var claims = new List<Claim>
-{
-    new Claim(ClaimTypes.Name, result.UserName ?? ""),
-    new Claim("UserTypeId", result.UserTypeId.ToString()), // store user type as claim
-    new Claim(ClaimTypes.Role, result.UserTypeId switch
-    {
-        1 => "Admin",
-        2 => "Driver",
-        3 => "Passenger",
-        _ => "Guest"
-    })
-};
+            {
+                new Claim(ClaimTypes.NameIdentifier, result.UserId.ToString()), // new: always include UserId
+                new Claim(ClaimTypes.Name, result.UserName ?? ""),
+                new Claim(ClaimTypes.Email, result.Email ?? ""),
+                new Claim(ClaimTypes.Role, result.UserTypeId switch
+                {
+                    1 => "Admin",
+                    2 => "Driver",
+                    3 => "Passenger",
+                    _ => "Guest"
+                }),
+                new Claim("UserTypeId", result.UserTypeId.ToString()) // optional custom claim
+            };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
@@ -105,8 +107,8 @@ public class Log_InModel : PageModel
             return RedirectToPage(result.UserTypeId switch
             {
                 2 => "/Driver_Profile",     // Driver
-                3 => "/customer-profile",   //
-                1 => "/AdminDashboard",     // Passenger
+                3 => "/customer-profile",   // Passenger
+                1 => "/AdminDashboard",     // Admin
                 _ => "/Index"
             });
         }

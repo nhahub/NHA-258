@@ -9,7 +9,7 @@ namespace SmartTransportation.Web.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "Driver")]
-    public class DriverController : ControllerBase
+    public class DriverController : BaseApiController
     {
         private readonly IDriverService _driverService;
         private readonly IVehicleService _vehicleService;
@@ -20,18 +20,9 @@ namespace SmartTransportation.Web.API.Controllers
             _vehicleService = vehicleService;
         }
 
-        // ---------------------------
-        // Helper: get current user ID from JWT
-        // ---------------------------
-        private int? GetCurrentUserId()
+        private IActionResult UnauthorizedIfNoUserId()
         {
-            var claim = User.FindFirst("UserId") ?? User.FindFirst("UserID");
-            return claim != null ? int.Parse(claim.Value) : (int?)null;
-        }
-
-        private IActionResult UnauthorizedIfNoUserId(int? userId)
-        {
-            if (userId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
             return null;
         }
 
@@ -41,27 +32,25 @@ namespace SmartTransportation.Web.API.Controllers
         [HttpGet("profile")]
         public async Task<IActionResult> GetCurrentDriverProfile()
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var driverFull = await _driverService.GetDriverFullByIdAsync(driverId.Value);
+            var driverFull = await _driverService.GetDriverFullByIdAsync(CurrentUserId.Value);
             if (driverFull == null) return NotFound();
 
             return Ok(driverFull);
         }
 
         // ---------------------------
-        // Get driver by ID (still works)
+        // Get driver by ID
         // ---------------------------
         [HttpGet("{driverId}")]
         public async Task<IActionResult> GetDriverFull(int driverId)
         {
-            var currentUserId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(currentUserId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            if (currentUserId != driverId) return Forbid();
+            if (CurrentUserId != driverId) return Forbid();
 
             var driverFull = await _driverService.GetDriverFullByIdAsync(driverId);
             if (driverFull == null) return NotFound();
@@ -75,11 +64,10 @@ namespace SmartTransportation.Web.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateDriver([FromBody] CreateDriverProfileDTO dto)
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var result = await _driverService.CreateDriverAsync(dto, driverId.Value);
+            var result = await _driverService.CreateDriverAsync(dto, CurrentUserId.Value);
             return Ok(result);
         }
 
@@ -89,11 +77,10 @@ namespace SmartTransportation.Web.API.Controllers
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateCurrentDriverProfile([FromBody] UpdateDriverProfileDTO dto)
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var updated = await _driverService.UpdateDriverAsync(driverId.Value, dto);
+            var updated = await _driverService.UpdateDriverAsync(CurrentUserId.Value, dto);
             if (updated == null) return NotFound();
 
             return Ok(updated);
@@ -105,25 +92,22 @@ namespace SmartTransportation.Web.API.Controllers
         [HttpPost("vehicle")]
         public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleDTO dto)
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var result = await _vehicleService.CreateVehicleAsync(driverId.Value, dto);
+            var result = await _vehicleService.CreateVehicleAsync(CurrentUserId.Value, dto);
             return Ok(result);
         }
 
         [HttpPut("vehicle")]
         public async Task<IActionResult> UpdateVehicle([FromBody] UpdateVehicleDTO dto)
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            // Verify vehicle belongs to current driver
             var vehicle = await _vehicleService.GetByIdAsync(dto.VehicleId);
             if (vehicle == null) return NotFound();
-            if (vehicle.DriverId != driverId.Value) return Forbid();
+            if (vehicle.DriverId != CurrentUserId.Value) return Forbid();
 
             var result = await _vehicleService.UpdateVehicleAsync(dto.VehicleId, dto);
             return Ok(result);
@@ -132,11 +116,10 @@ namespace SmartTransportation.Web.API.Controllers
         [HttpGet("vehicle")]
         public async Task<IActionResult> GetVehicle()
         {
-            var driverId = GetCurrentUserId();
-            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(driverId.Value);
+            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
             if (vehicle == null) return NotFound();
 
             return Ok(vehicle);

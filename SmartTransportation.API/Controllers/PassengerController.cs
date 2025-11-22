@@ -9,7 +9,7 @@ namespace SmartTransportation.Web.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "Passenger")]
-    public class PassengerController : ControllerBase
+    public class PassengerController : BaseApiController
     {
         private readonly IUserProfileService _profileService;
 
@@ -19,60 +19,47 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // -------------------------------
-        // Helper: get current user ID from JWT Aim: Passenger
-        // -------------------------------
-        private int? GetCurrentUserId()
-        {
-            var claim = User.FindFirst("UserId") ?? User.FindFirst("UserID");
-            return claim != null ? int.Parse(claim.Value) : (int?)null;
-        }
-
-        // -------------------------------
-        // Create Passenger Profile
-        // Route: POST api/Passenger/profile
-        // -------------------------------
-        [HttpPost("profile")]
-        public async Task<IActionResult> CreateMyProfile([FromBody] CreateUserProfileDTO dto)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized("UserId claim missing in token.");
-
-            // Check if profile already exists
-            var exists = await _profileService.GetByUserIdAsync(userId.Value);
-            if (exists != null)
-                return BadRequest("Profile already exists. Use PUT to update.");
-
-            var created = await _profileService.CreateAsync(dto, userId.Value);
-            return Ok(created);
-        }
-
-        // -------------------------------
-        // Get Passenger Profile
+        // GET: Current passenger profile
         // Route: GET api/Passenger/profile
         // -------------------------------
         [HttpGet("profile")]
-        public async Task<IActionResult> GetMyProfile()
+        public async Task<IActionResult> GetProfile()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
 
-            var profile = await _profileService.GetByUserIdAsync(userId.Value);
+            var profile = await _profileService.GetByUserIdAsync(CurrentUserId.Value);
             if (profile == null) return NotFound("Profile not found.");
 
             return Ok(profile);
         }
 
         // -------------------------------
-        // Update Passenger Profile
+        // POST: Create passenger profile
+        // Route: POST api/Passenger/profile
+        // -------------------------------
+        [HttpPost("profile")]
+        public async Task<IActionResult> CreateProfile([FromBody] CreateUserProfileDTO dto)
+        {
+            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
+
+            var existing = await _profileService.GetByUserIdAsync(CurrentUserId.Value);
+            if (existing != null)
+                return BadRequest("Profile already exists. Use PUT to update.");
+
+            var created = await _profileService.CreateAsync(dto, CurrentUserId.Value);
+            return Ok(created);
+        }
+
+        // -------------------------------
+        // PUT: Update passenger profile
         // Route: PUT api/Passenger/profile
         // -------------------------------
         [HttpPut("profile")]
-        public async Task<IActionResult> UpdateMyProfile([FromBody] UpdateUserProfileDTO dto)
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDTO dto)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
 
-            var updated = await _profileService.UpdateAsync(userId.Value, dto);
+            var updated = await _profileService.UpdateAsync(CurrentUserId.Value, dto);
             if (updated == null) return NotFound("Profile not found.");
 
             return Ok(updated);

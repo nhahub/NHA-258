@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.BLL.Services;
@@ -35,7 +35,6 @@ builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserProfileService, PassengerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 
-
 // ===================
 // Authentication (Cookie)
 // ===================
@@ -48,6 +47,17 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.ExpireTimeSpan = TimeSpan.FromHours(1);
         options.SlidingExpiration = true;
     });
+
+// ===================
+// Session (for JWT storage)
+// ===================
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(1);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 // ===================
 // Razor Pages Authorization
@@ -73,7 +83,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 
-app.UseAuthentication(); // Must come BEFORE authorization
+app.UseSession();          // ✅ Must be before Authentication
+app.UseAuthentication();   // Must come BEFORE authorization
 app.UseAuthorization();
 
 // ==========================================

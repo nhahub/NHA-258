@@ -185,6 +185,7 @@ namespace SmartTransportation.BLL.Services
             return new AuthResponseDto
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
+                UserId = user.UserId,        
                 UserName = user.UserName,
                 Email = user.Email,
                 UserTypeId = user.UserTypeId
