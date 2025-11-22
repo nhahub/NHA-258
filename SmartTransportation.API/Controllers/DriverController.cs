@@ -29,14 +29,38 @@ namespace SmartTransportation.Web.API.Controllers
             return claim != null ? int.Parse(claim.Value) : (int?)null;
         }
 
+        private IActionResult UnauthorizedIfNoUserId(int? userId)
+        {
+            if (userId == null) return Unauthorized("UserId claim missing in token.");
+            return null;
+        }
+
         // ---------------------------
-        // Driver Profile Endpoints
+        // Get current driver full profile
+        // ---------------------------
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetCurrentDriverProfile()
+        {
+            var driverId = GetCurrentUserId();
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
+
+            var driverFull = await _driverService.GetDriverFullByIdAsync(driverId.Value);
+            if (driverFull == null) return NotFound();
+
+            return Ok(driverFull);
+        }
+
+        // ---------------------------
+        // Get driver by ID (still works)
         // ---------------------------
         [HttpGet("{driverId}")]
         public async Task<IActionResult> GetDriverFull(int driverId)
         {
             var currentUserId = GetCurrentUserId();
-            if (currentUserId == null) return Unauthorized("UserId claim missing in token.");
+            var unauthorized = UnauthorizedIfNoUserId(currentUserId);
+            if (unauthorized != null) return unauthorized;
+
             if (currentUserId != driverId) return Forbid();
 
             var driverFull = await _driverService.GetDriverFullByIdAsync(driverId);
@@ -45,38 +69,45 @@ namespace SmartTransportation.Web.API.Controllers
             return Ok(driverFull);
         }
 
+        // ---------------------------
+        // Create driver
+        // ---------------------------
         [HttpPost]
         public async Task<IActionResult> CreateDriver([FromBody] CreateDriverProfileDTO dto)
         {
-            var currentUserId = GetCurrentUserId();
-            if (currentUserId == null)
-                return Unauthorized("UserId claim missing in token.");
+            var driverId = GetCurrentUserId();
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
 
-            var result = await _driverService.CreateDriverAsync(dto, currentUserId.Value);
+            var result = await _driverService.CreateDriverAsync(dto, driverId.Value);
             return Ok(result);
         }
 
-        [HttpPut("{driverId}")]
-        public async Task<IActionResult> UpdateDriver(int driverId, [FromBody] UpdateDriverProfileDTO dto)
+        // ---------------------------
+        // Update current driver profile
+        // ---------------------------
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateCurrentDriverProfile([FromBody] UpdateDriverProfileDTO dto)
         {
-            var currentUserId = GetCurrentUserId();
-            if (currentUserId == null) return Unauthorized("UserId claim missing in token.");
-            if (currentUserId != driverId) return Forbid();
+            var driverId = GetCurrentUserId();
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
 
-            var updated = await _driverService.UpdateDriverAsync(driverId, dto);
+            var updated = await _driverService.UpdateDriverAsync(driverId.Value, dto);
             if (updated == null) return NotFound();
 
             return Ok(updated);
         }
+
         // ---------------------------
-        // Vehicle Endpoints
+        // Vehicle endpoints
         // ---------------------------
         [HttpPost("vehicle")]
         public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleDTO dto)
         {
             var driverId = GetCurrentUserId();
-            if (driverId == null)
-                return Unauthorized("UserId claim missing in token.");
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
 
             var result = await _vehicleService.CreateVehicleAsync(driverId.Value, dto);
             return Ok(result);
@@ -86,10 +117,10 @@ namespace SmartTransportation.Web.API.Controllers
         public async Task<IActionResult> UpdateVehicle([FromBody] UpdateVehicleDTO dto)
         {
             var driverId = GetCurrentUserId();
-            if (driverId == null)
-                return Unauthorized("UserId claim missing in token.");
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
 
-            // Optional: verify vehicle belongs to current driver
+            // Verify vehicle belongs to current driver
             var vehicle = await _vehicleService.GetByIdAsync(dto.VehicleId);
             if (vehicle == null) return NotFound();
             if (vehicle.DriverId != driverId.Value) return Forbid();
@@ -102,13 +133,13 @@ namespace SmartTransportation.Web.API.Controllers
         public async Task<IActionResult> GetVehicle()
         {
             var driverId = GetCurrentUserId();
-            if (driverId == null) return Unauthorized("UserId claim missing in token.");
+            var unauthorized = UnauthorizedIfNoUserId(driverId);
+            if (unauthorized != null) return unauthorized;
 
             var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(driverId.Value);
             if (vehicle == null) return NotFound();
 
             return Ok(vehicle);
         }
-
     }
 }

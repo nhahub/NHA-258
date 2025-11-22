@@ -1,41 +1,65 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using SmartTransportation.BLL.Interfaces;
+using SmartTransportation.BLL.Services;
+using SmartTransportation.DAL.Models;
+using SmartTransportation.DAL.Repositories.UnitOfWork;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --------------------------------------------
+// ==========================================
 // Add Services
-// --------------------------------------------
+// ==========================================
 
-// Enable MVC (Controllers + Views)
+// MVC Controllers + Views
 builder.Services.AddControllersWithViews();
 
-// Enable Razor Pages (optional, if you use them)
+// Razor Pages
 builder.Services.AddRazorPages();
 
-// HttpClient (required for your PaymentController)
+// HttpClient (for consuming APIs)
 builder.Services.AddHttpClient();
 
+// ===================
+// Database (EF Core)
+// ===================
+builder.Services.AddDbContext<TransportationContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// ===================
+// UnitOfWork & BLL Services
+// ===================
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IDriverService, DriverService>();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
+
+// ===================
+// Authentication (Cookie)
+// ===================
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Log_In"; // Redirect if not authenticated
+        options.LoginPath = "/Log_In";              // Redirect here if not authenticated
+        options.AccessDeniedPath = "/AccessDenied"; // Redirect here if user is unauthorized
+        options.ReturnUrlParameter = "ReturnUrl";   // Preserve ReturnUrl
         options.ExpireTimeSpan = TimeSpan.FromHours(1);
         options.SlidingExpiration = true;
     });
 
+// ===================
+// Razor Pages Authorization
+// ===================
 builder.Services.AddRazorPages(options =>
 {
-    options.Conventions.AuthorizePage("/Dashboard"); // only logged-in users
+    options.Conventions.AuthorizePage("/Dashboard");      // Require login for Dashboard
+    options.Conventions.AuthorizePage("/Driver_Profile"); // Require login for Driver Profile
 });
-
 
 var app = builder.Build();
 
-// --------------------------------------------
-// Configure Middleware
-// --------------------------------------------
-
+// ==========================================
+// Middleware
+// ==========================================
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -43,30 +67,20 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Allow serving CSS, JS, images, etc.
 app.UseStaticFiles();
-
 app.UseRouting();
 
-
-app.UseAuthentication(); // <-- Must come before UseAuthorization
+app.UseAuthentication(); // Must come BEFORE authorization
 app.UseAuthorization();
 
-
-// --------------------------------------------
-// Routes
-// --------------------------------------------
-
-// MVC controller routes
+// ==========================================
+// Routing (MVC + Razor Pages)
+// ==========================================
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}"
 );
 
-// Razor pages route (optional)
 app.MapRazorPages();
-
-// --------------------------------------------
 
 app.Run();

@@ -7,9 +7,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>@ViewData["Title"]</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Profile</title>
     <style>
         :root {
             --primary: #5b6fd8;
@@ -39,67 +39,23 @@
             line-height: 1.6;
         }
 
-        .header {
-            background: white;
-            border-bottom: 1px solid var(--gray-200);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: var(--shadow);
-        }
-
-        .header-content {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-weight: 800;
-            font-size: 20px;
-            color: var(--black);
-        }
-
-        .logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            display: grid;
-            place-items: center;
-            box-shadow: var(--shadow-md);
-        }
-
-            .logo span {
-                font-size: 18px;
-                font-weight: 900;
-                color: white;
-            }
-
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 32px 24px;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
         }
 
         .profile-header {
-            background: white;
-            border-radius: var(--radius);
-            padding: 32px;
-            margin-bottom: 24px;
-            box-shadow: var(--shadow);
             display: flex;
-            gap: 24px;
             align-items: center;
+            gap: 20px;
+            background: var(--white);
+            padding: 32px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-md);
         }
 
-        .profile-avatar {
+        .avatar {
             width: 120px;
             height: 120px;
             border-radius: 50%;
@@ -112,28 +68,12 @@
         }
 
         .profile-info h1 {
+            margin: 0;
             font-size: 32px;
-            margin-bottom: 8px;
         }
 
-        .profile-stats {
-            display: flex;
-            gap: 32px;
-            margin-top: 16px;
-        }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 14px;
+        .profile-info p {
+            margin: 4px 0 0;
             color: var(--gray-700);
         }
 
@@ -141,18 +81,19 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 24px;
+            margin-top: 30px;
         }
 
         .profile-card {
-            background: white;
+            background: var(--white);
             border-radius: var(--radius);
             padding: 24px;
             box-shadow: var(--shadow);
         }
 
             .profile-card h2 {
-                font-size: 20px;
                 margin-bottom: 20px;
+                font-size: 20px;
                 color: var(--gray-900);
             }
 
@@ -160,27 +101,26 @@
             margin-bottom: 20px;
         }
 
-            .form-group label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: var(--gray-700);
-                font-size: 14px;
-            }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--gray-700);
+            font-weight: 600;
+        }
 
-            .form-group input {
-                width: 100%;
-                padding: 12px 16px;
-                border: 2px solid var(--gray-200);
-                border-radius: var(--radius);
-                font-size: 15px;
-                transition: all 0.3s;
-            }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 15px;
+            transition: all 0.3s;
+        }
 
-                .form-group input:focus {
-                    outline: none;
-                    border-color: var(--primary);
-                }
+            input:focus {
+                outline: none;
+                border-color: var(--primary);
+            }
 
         .btn {
             padding: 12px 24px;
@@ -190,14 +130,11 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-        }
-
-        .btn-primary {
             background: var(--primary);
-            color: white;
+            color: var(--white);
         }
 
-            .btn-primary:hover {
+            .btn:hover {
                 background: var(--primary-dark);
             }
 
@@ -209,151 +146,66 @@
             border-radius: var(--radius);
             margin-bottom: 20px;
         }
+
+        .error-message {
+            background: #fee;
+            color: #ef4444;
+            padding: 12px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <a asp-page="/Index" class="brand">
-                <div class="logo"><span>MS</span></div>
-                <span>Move Smart</span>
-            </a>
-            <div>
-                <a asp-page="/Log_in" class="btn btn-primary">Logout</a>
-            </div>
-        </div>
-    </div>
-
     <div class="container">
         <div class="profile-header">
-            <div class="profile-avatar">
-                @(Model.FullName?.Substring(0, 1) ?? "D")
-            </div>
+            <div class="avatar">@(!string.IsNullOrEmpty(Model.FullName) ? Model.FullName.Substring(0, 1) : "D")</div>
             <div class="profile-info">
                 <h1>@Model.FullName</h1>
-                <p style="color: var(--gray-700); font-size: 16px;">@Model.Phone</p>
-
-                <div class="profile-stats">
-                    <div class="stat">
-                        <div class="stat-value">@Model.TotalTrips</div>
-                        <div class="stat-label">Total Trips</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">@Model.TotalMiles km</div>
-                        <div class="stat-label">Miles Driven</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-value">@Model.SafetyScore</div>
-                        <div class="stat-label">Safety Score</div>
-                    </div>
-                </div>
+                <p>@Model.Phone</p>
             </div>
         </div>
 
         @if (!string.IsNullOrEmpty(Model.SuccessMessage))
         {
-            <div class="success-message">
-                @Model.SuccessMessage
-            </div>
+            <div class="success-message">@Model.SuccessMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="error-message">@Model.ErrorMessage</div>
         }
 
         <div class="profile-grid">
+            <!-- Driver Info -->
             <div class="profile-card">
                 <h2>Personal Information</h2>
                 <form method="post">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input asp-for="FullName" type="text" required />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Phone</label>
-                        <input asp-for="Phone" type="tel" required />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Address</label>
-                        <input asp-for="Address" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>City</label>
-                        <input asp-for="City" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Country</label>
-                        <input asp-for="Country" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Date of Birth</label>
-                        <input asp-for="DateOfBirth" type="date" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Gender</label>
-                        <input asp-for="Gender" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Driver License Number</label>
-                        <input asp-for="DriverLicenseNumber" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Driver License Expiry</label>
-                        <input asp-for="DriverLicenseExpiry" type="date" />
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                    <div class="form-group"><label>Full Name</label><input asp-for="FullName" type="text" required /></div>
+                    <div class="form-group"><label>Phone</label><input asp-for="Phone" type="tel" required /></div>
+                    <div class="form-group"><label>Address</label><input asp-for="Address" type="text" /></div>
+                    <div class="form-group"><label>City</label><input asp-for="City" type="text" /></div>
+                    <div class="form-group"><label>Country</label><input asp-for="Country" type="text" /></div>
+                    <div class="form-group"><label>Date of Birth</label><input asp-for="DateOfBirth" type="date" /></div>
+                    <div class="form-group"><label>Gender</label><input asp-for="Gender" type="text" /></div>
+                    <div class="form-group"><label>Driver License Number</label><input asp-for="DriverLicenseNumber" type="text" /></div>
+                    <div class="form-group"><label>Driver License Expiry</label><input asp-for="DriverLicenseExpiry" type="date" /></div>
+                    <button type="submit" class="btn">Update Profile</button>
                 </form>
             </div>
 
+            <!-- Vehicle Info -->
             <div class="profile-card">
                 <h2>Vehicle Information</h2>
                 <form method="post" asp-page-handler="UpdateVehicle">
-                    <div class="form-group">
-                        <label>Vehicle Make</label>
-                        <input asp-for="VehicleMake" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Vehicle Model</label>
-                        <input asp-for="VehicleModel" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Vehicle Year</label>
-                        <input asp-for="VehicleYear" type="number" min="1900" max="2100" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Plate Number</label>
-                        <input asp-for="PlateNumber" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Color</label>
-                        <input asp-for="Color" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Seats Count</label>
-                        <input asp-for="SeatsCount" type="number" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Vehicle License Number</label>
-                        <input asp-for="VehicleLicenseNumber" type="text" />
-                    </div>
-
-                    <div class="form-group">
-                        <label>Vehicle License Expiry</label>
-                        <input asp-for="VehicleLicenseExpiry" type="date" />
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Update Vehicle</button>
+                    <div class="form-group"><label>Make</label><input asp-for="VehicleMake" /></div>
+                    <div class="form-group"><label>Model</label><input asp-for="VehicleModel" /></div>
+                    <div class="form-group"><label>Year</label><input asp-for="VehicleYear" type="number" /></div>
+                    <div class="form-group"><label>Plate Number</label><input asp-for="PlateNumber" /></div>
+                    <div class="form-group"><label>Color</label><input asp-for="Color" /></div>
+                    <div class="form-group"><label>Seats Count</label><input asp-for="SeatsCount" type="number" /></div>
+                    <div class="form-group"><label>Vehicle License Number</label><input asp-for="VehicleLicenseNumber" /></div>
+                    <div class="form-group"><label>Vehicle License Expiry</label><input asp-for="VehicleLicenseExpiry" type="date" /></div>
+                    <button type="submit" class="btn">Update Vehicle</button>
                 </form>
             </div>
         </div>

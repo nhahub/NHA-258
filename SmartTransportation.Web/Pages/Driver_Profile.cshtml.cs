@@ -1,177 +1,123 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using SmartTransportation.BLL.DTOs.Profile;
-using SmartTransportation.BLL.Interfaces;
-using System;
-using System.Threading.Tasks;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 
 namespace SmartTransportation.Web.Pages
 {
     [Authorize(Roles = "Driver")]
     public class Driver_ProfileModel : PageModel
     {
-        private readonly IDriverService _driverService;
-        private readonly IVehicleService _vehicleService;
+        private readonly IConfiguration _configuration;
+        private readonly IHttpClientFactory _httpClientFactory;
 
-        public Driver_ProfileModel(IDriverService driverService, IVehicleService vehicleService)
+        public Driver_ProfileModel(IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
-            _driverService = driverService;
-            _vehicleService = vehicleService;
+            _configuration = configuration;
+            _httpClientFactory = httpClientFactory;
         }
 
-        // -------------------------
+        // -----------------------------
         // Driver Properties
-        // -------------------------
-        [BindProperty]
-        public string FullName { get; set; } = "";
+        // -----------------------------
+        [BindProperty] public string FullName { get; set; } = "";
+        [BindProperty] public string? Phone { get; set; }
+        [BindProperty] public string? Address { get; set; }
+        [BindProperty] public string? City { get; set; }
+        [BindProperty] public string? Country { get; set; }
+        [BindProperty] public DateOnly? DateOfBirth { get; set; }
+        [BindProperty] public string? Gender { get; set; }
+        [BindProperty] public string? DriverLicenseNumber { get; set; }
+        [BindProperty] public DateOnly? DriverLicenseExpiry { get; set; }
 
-        [BindProperty]
-        public string? Phone { get; set; }
-
-        [BindProperty]
-        public string? Address { get; set; }
-
-        [BindProperty]
-        public string? City { get; set; }
-
-        [BindProperty]
-        public string? Country { get; set; }
-
-        [BindProperty]
-        public DateOnly? DateOfBirth { get; set; }
-
-        [BindProperty]
-        public string? Gender { get; set; }
-
-        [BindProperty]
-        public string? ProfilePhotoUrl { get; set; }
-
-        [BindProperty]
-        public string? DriverLicenseNumber { get; set; }
-
-        [BindProperty]
-        public DateOnly? DriverLicenseExpiry { get; set; }
-
-        [BindProperty]
-        public decimal? DriverRating { get; set; }
-
-        [BindProperty]
-        public bool IsDriverVerified { get; set; }
-
-        // -------------------------
+        // -----------------------------
         // Vehicle Properties
-        // -------------------------
-        [BindProperty]
-        public int VehicleId { get; set; }
+        // -----------------------------
+        [BindProperty] public int VehicleId { get; set; }
+        [BindProperty] public string? VehicleMake { get; set; }
+        [BindProperty] public string? VehicleModel { get; set; }
+        [BindProperty] public int? VehicleYear { get; set; }
+        [BindProperty] public string? PlateNumber { get; set; }
+        [BindProperty] public string? Color { get; set; }
+        [BindProperty] public int SeatsCount { get; set; }
+        [BindProperty] public string? VehicleLicenseNumber { get; set; }
+        [BindProperty] public DateOnly? VehicleLicenseExpiry { get; set; }
 
-        [BindProperty]
-        public string? VehicleMake { get; set; }
+        [TempData] public string? SuccessMessage { get; set; }
+        [TempData] public string? ErrorMessage { get; set; }
 
-        [BindProperty]
-        public string? VehicleModel { get; set; }
-
-        [BindProperty]
-        public int? VehicleYear { get; set; }
-
-        [BindProperty]
-        public string? PlateNumber { get; set; }
-
-        [BindProperty]
-        public string? Color { get; set; }
-
-        [BindProperty]
-        public int SeatsCount { get; set; }
-
-        [BindProperty]
-        public string? VehicleLicenseNumber { get; set; }
-
-        [BindProperty]
-        public DateOnly? VehicleLicenseExpiry { get; set; }
-
-        [BindProperty]
-        public bool VehicleIsVerified { get; set; }
-
-        // -------------------------
-        // Stats (optional: can be fetched dynamically from service)
-        // -------------------------
-        public int TotalTrips { get; set; }
-        public int TotalMiles { get; set; }
-        public int SafetyScore { get; set; }
-
-        public string? SuccessMessage { get; set; }
-
-        // -------------------------
-        // Helper: get current driver ID from JWT
-        // -------------------------
-        private int GetCurrentDriverId()
+        // -----------------------------
+        // GET: Load driver & vehicle
+        // -----------------------------
+        public async Task<IActionResult> OnGetAsync()
         {
-            var claim = User.FindFirst("UserId") ?? User.FindFirst("UserID");
-            if (claim == null) throw new Exception("UserId claim missing in token.");
-            return int.Parse(claim.Value);
-        }
+            var token = Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                return RedirectToPage("/Log_In");
 
-        // -------------------------
-        // GET: Load driver & vehicle info dynamically
-        // -------------------------
-        public async Task OnGetAsync()
-        {
-            int driverId = GetCurrentDriverId();
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-            // Fetch full driver info including vehicle
-            DriverFullDTO driverFull = await _driverService.GetDriverFullByIdAsync(driverId);
-            if (driverFull?.Driver != null)
+            var apiBaseUrl = _configuration["ApiBaseUrl"];
+            var response = await client.GetAsync($"{apiBaseUrl}/api/Driver/profile"); // API reads JWT
+
+            if (!response.IsSuccessStatusCode)
             {
-                var driver = driverFull.Driver;
-
-                // Map driver fields
-                FullName = driver.FullName ?? "";
-                Phone = driver.Phone;
-                Address = driver.Address;
-                City = driver.City;
-                Country = driver.Country;
-                DateOfBirth = driver.DateOfBirth;
-                Gender = driver.Gender;
-                ProfilePhotoUrl = driver.ProfilePhotoUrl;
-                DriverLicenseNumber = driver.DriverLicenseNumber;
-                DriverLicenseExpiry = driver.DriverLicenseExpiry;
-                DriverRating = driver.DriverRating;
-                IsDriverVerified = driver.IsDriverVerified;
+                ErrorMessage = "Failed to load profile.";
+                return Page();
             }
 
-            if (driverFull?.Vehicle != null)
-            {
-                var vehicle = driverFull.Vehicle;
+            var json = await response.Content.ReadAsStringAsync();
+            var driverFull = JsonSerializer.Deserialize<DriverFullDTO>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                // Map vehicle fields
-                VehicleId = vehicle.VehicleId;
-                VehicleMake = vehicle.VehicleMake;
-                VehicleModel = vehicle.VehicleModel;
-                VehicleYear = vehicle.VehicleYear;
-                PlateNumber = vehicle.PlateNumber;
-                Color = vehicle.Color;
-                SeatsCount = vehicle.SeatsCount;
-                VehicleLicenseNumber = vehicle.VehicleLicenseNumber;
-                VehicleLicenseExpiry = vehicle.VehicleLicenseExpiry;
-                VehicleIsVerified = vehicle.IsVerified;
+            if (driverFull != null)
+            {
+                FullName = driverFull.Driver.FullName ?? "";
+                Phone = driverFull.Driver.Phone;
+                Address = driverFull.Driver.Address;
+                City = driverFull.Driver.City;
+                Country = driverFull.Driver.Country;
+                DateOfBirth = driverFull.Driver.DateOfBirth;
+                Gender = driverFull.Driver.Gender;
+                DriverLicenseNumber = driverFull.Driver.DriverLicenseNumber;
+                DriverLicenseExpiry = driverFull.Driver.DriverLicenseExpiry;
+
+                if (driverFull.Vehicle != null)
+                {
+                    VehicleId = driverFull.Vehicle.VehicleId;
+                    VehicleMake = driverFull.Vehicle.VehicleMake;
+                    VehicleModel = driverFull.Vehicle.VehicleModel;
+                    VehicleYear = driverFull.Vehicle.VehicleYear;
+                    PlateNumber = driverFull.Vehicle.PlateNumber;
+                    Color = driverFull.Vehicle.Color;
+                    SeatsCount = driverFull.Vehicle.SeatsCount;
+                    VehicleLicenseNumber = driverFull.Vehicle.VehicleLicenseNumber;
+                    VehicleLicenseExpiry = driverFull.Vehicle.VehicleLicenseExpiry;
+                }
             }
 
-            // Optional: fetch real stats dynamically from a service if available
-            TotalTrips = 0; // replace with actual service call
-            TotalMiles = 0; // replace with actual service call
-            SafetyScore = 0; // replace with actual service call
+            return Page();
         }
 
-        // -------------------------
-        // POST: Update driver profile
-        // -------------------------
+        // -----------------------------
+        // POST: Update driver
+        // -----------------------------
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid) return Page();
 
-            int driverId = GetCurrentDriverId();
+            var token = Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                return RedirectToPage("/Log_In");
 
-            var updateDto = new UpdateDriverProfileDTO
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var apiBaseUrl = _configuration["ApiBaseUrl"];
+            var dto = new UpdateDriverProfileDTO
             {
                 FullName = FullName,
                 Phone = Phone,
@@ -180,27 +126,37 @@ namespace SmartTransportation.Web.Pages
                 Country = Country,
                 DateOfBirth = DateOfBirth,
                 Gender = Gender,
-                ProfilePhotoUrl = ProfilePhotoUrl,
                 DriverLicenseNumber = DriverLicenseNumber,
                 DriverLicenseExpiry = DriverLicenseExpiry
             };
 
-            var result = await _driverService.UpdateDriverAsync(driverId, updateDto);
-            if (result != null) SuccessMessage = "Profile updated successfully!";
+            var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var response = await client.PutAsync($"{apiBaseUrl}/api/Driver/profile", content);
 
-            return RedirectToPage(); // reload page with updated data
+            if (response.IsSuccessStatusCode)
+                SuccessMessage = "Profile updated successfully!";
+            else
+                ErrorMessage = "Failed to update profile.";
+
+            return RedirectToPage();
         }
 
-        // -------------------------
+        // -----------------------------
         // POST: Update vehicle
-        // -------------------------
+        // -----------------------------
         public async Task<IActionResult> OnPostUpdateVehicleAsync()
         {
             if (!ModelState.IsValid) return Page();
 
-            int driverId = GetCurrentDriverId();
+            var token = Request.Cookies["AuthToken"];
+            if (string.IsNullOrEmpty(token))
+                return RedirectToPage("/Log_In");
 
-            var vehicleDto = new UpdateVehicleDTO
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var apiBaseUrl = _configuration["ApiBaseUrl"];
+            var dto = new UpdateVehicleDTO
             {
                 VehicleId = VehicleId,
                 VehicleMake = VehicleMake,
@@ -213,10 +169,15 @@ namespace SmartTransportation.Web.Pages
                 VehicleLicenseExpiry = VehicleLicenseExpiry
             };
 
-            var result = await _vehicleService.UpdateVehicleAsync(VehicleId, vehicleDto);
-            if (result != null) SuccessMessage = "Vehicle updated successfully!";
+            var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var response = await client.PutAsync($"{apiBaseUrl}/api/Driver/vehicle", content);
 
-            return RedirectToPage(); // reload page with updated data
+            if (response.IsSuccessStatusCode)
+                SuccessMessage = "Vehicle updated successfully!";
+            else
+                ErrorMessage = "Failed to update vehicle.";
+
+            return RedirectToPage();
         }
     }
 }
