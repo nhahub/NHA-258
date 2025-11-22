@@ -1,12 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using SmartTransportation.Web.Helpers;
 
 namespace SmartTransportation.Web.Pages.Driver.Trips
 {
-    // Matches backend RouteDetailsDTO
     public class RouteDetailsVm
     {
         public int RouteId { get; set; }
@@ -15,14 +16,12 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
         public string EndLocation { get; set; } = string.Empty;
     }
 
-    // Used ONLY for dropdown
     public class RouteListItemVm
     {
         public int RouteId { get; set; }
         public string DisplayName { get; set; } = string.Empty;
     }
 
-    // Vehicle from /api/Driver/vehicle
     public class VehicleVm
     {
         public int VehicleId { get; set; }
@@ -32,11 +31,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
         public string PlateNumber { get; set; } = string.Empty;
         public int SeatsCount { get; set; }
         public bool IsVerified { get; set; }
-    }
-
-    public class CreateTripResponseVm
-    {
-        public int TripId { get; set; }
     }
 
     public class CreateModel : PageModel
@@ -55,8 +49,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
 
         public string? ErrorMessage { get; set; }
         public string? SuccessMessage { get; set; }
-
-        // ---------------- Form Fields ----------------
 
         [BindProperty]
         [Required(ErrorMessage = "Please select a route.")]
@@ -84,18 +76,12 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
         [StringLength(255)]
         public string? Notes { get; set; }
 
-        // ---------------- Helpers ----------------
-
         private int GetCurrentUserId()
         {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier)
-                     ?? User.FindFirst("UserId")
-                     ?? User.FindFirst("UserID");
-
-            if (claim != null && int.TryParse(claim.Value, out int id))
-                return id;
-
-            throw new Exception("Cannot resolve logged-in user ID.");
+            var id = ClaimsHelper.GetUserId(User);
+            if (id == null)
+                throw new Exception("Cannot resolve logged-in user ID.");
+            return id.Value;
         }
 
         private string ApiBase =>
@@ -115,10 +101,9 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
                 }
 
                 var dto = await response.Content.ReadFromJsonAsync<List<RouteDetailsVm>>();
-
                 if (dto == null || !dto.Any())
                 {
-                    ErrorMessage = "No routes found in system.";
+                    ErrorMessage = "No routes found.";
                     return false;
                 }
 
@@ -156,8 +141,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
             }
         }
 
-        // ---------------- GET ----------------
-
         public async Task<IActionResult> OnGetAsync()
         {
             await LoadRoutesAsync();
@@ -175,8 +158,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
             return Page();
         }
 
-        // ---------------- POST ----------------
-
         public async Task<IActionResult> OnPostAsync()
         {
             await LoadRoutesAsync();
@@ -186,6 +167,13 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
                 return Page();
 
             var client = _httpClientFactory.CreateClient();
+
+            // Attach JWT token from cookie if available
+            if (Request.Cookies.ContainsKey("AuthToken"))
+            {
+                var token = Request.Cookies["AuthToken"];
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
 
             var startLocal = DepartureDate.Date + DepartureTime;
             var startUtc = DateTime.SpecifyKind(startLocal, DateTimeKind.Local).ToUniversalTime();
@@ -204,7 +192,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
             try
             {
                 var res = await client.PostAsJsonAsync($"{ApiBase}/api/Trips", payload);
-
                 if (!res.IsSuccessStatusCode)
                 {
                     ErrorMessage = $"Failed to create trip ({res.StatusCode}).";
@@ -220,6 +207,6 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
                 return Page();
             }
         }
+
     }
 }
-

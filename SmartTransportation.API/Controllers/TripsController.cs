@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SmartTransportation.BLL.DTOs.Trip;
 using SmartTransportation.BLL.Interfaces;
-using SmartTransportation.DAL.Models.Common;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using System;
 
@@ -11,8 +9,8 @@ namespace SmartTransportation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // كل الأوامر هنا للـ Driver فقط
-    public class TripsController : ControllerBase
+    [Authorize] // Only logged-in users
+    public class TripsController : BaseApiController
     {
         private readonly ITripService _tripService;
 
@@ -21,28 +19,19 @@ namespace SmartTransportation.Controllers
             _tripService = tripService;
         }
 
-        private int? GetCurrentUserId()
-        {
-            var claim = User.FindFirst("UserId") ?? User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-            if (claim != null && int.TryParse(claim.Value, out int userId))
-                return userId;
-            return null;
-        }
-
         [HttpPost]
-        [Authorize(Roles = "Driver")]
+        [Authorize(Roles = "Driver")] // Only drivers can create
         public async Task<IActionResult> CreateTrip([FromBody] CreateTripDTO tripDto)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new { Error = "BadRequest", Message = "Invalid trip data.", Details = ModelState });
+                return BadRequest(new { Error = "BadRequest", Message = "Invalid trip data." });
 
-            var driverId = GetCurrentUserId();
-            if (driverId == null)
-                return Unauthorized(new { Error = "Unauthorized", Message = "Invalid token or driver ID." });
+            if (CurrentUserId == null)
+                return Unauthorized(new { Error = "Unauthorized", Message = "Driver not found in token." });
 
             try
             {
-                var newTrip = await _tripService.CreateTripAsync(tripDto, driverId.Value);
+                var newTrip = await _tripService.CreateTripAsync(tripDto, CurrentUserId.Value);
                 return CreatedAtAction(nameof(GetTripById), new { id = newTrip.TripId }, newTrip);
             }
             catch (Exception ex)
@@ -52,7 +41,6 @@ namespace SmartTransportation.Controllers
         }
 
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetTripById(int id)
         {
             var trip = await _tripService.GetTripDetailsByIdAsync(id);
@@ -67,17 +55,8 @@ namespace SmartTransportation.Controllers
             return Ok(trips);
         }
 
-        [HttpGet("paged")]
-        public async Task<ActionResult<PagedResult<TripDetailsDTO>>> GetPagedTrips(
-            [FromQuery] string? search,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
-        {
-            var pagedTrips = await _tripService.GetPagedTripsAsync(search, pageNumber, pageSize);
-            return Ok(pagedTrips);
-        }
-
         [HttpPost("{id}/start")]
+        [Authorize(Roles = "Driver")]
         public async Task<IActionResult> StartTrip(int id)
         {
             try
@@ -92,6 +71,7 @@ namespace SmartTransportation.Controllers
         }
 
         [HttpPost("{id}/complete")]
+        [Authorize(Roles = "Driver")]
         public async Task<IActionResult> CompleteTrip(int id)
         {
             try
@@ -103,18 +83,6 @@ namespace SmartTransportation.Controllers
             {
                 return BadRequest(new { Error = "Error", Message = ex.Message });
             }
-        }
-
-        [HttpGet("search")]
-        [AllowAnonymous]
-        public async Task<IActionResult> SearchTrips(
-            [FromQuery] string? from,
-            [FromQuery] string? to,
-            [FromQuery] DateTime? date,
-            [FromQuery] int passengers = 1)
-        {
-            var results = await _tripService.SearchTripsAsync(from, to, date, passengers);
-            return Ok(results);
         }
     }
 }
