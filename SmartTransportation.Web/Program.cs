@@ -35,6 +35,9 @@ builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserProfileService, PassengerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 
+// ✅ Register StripePaymentService so it can be injected into Razor Pages
+builder.Services.AddScoped<StripePaymentService>();
+
 // ===================
 // Authentication (Cookie)
 // ===================
@@ -66,6 +69,7 @@ builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizePage("/Dashboard");      // Require login for Dashboard
     options.Conventions.AuthorizePage("/Driver_Profile"); // Require login for Driver Profile
+    options.Conventions.AuthorizePage("/Payment/Pay");    // Require login for Payment page
 });
 
 var app = builder.Build();
