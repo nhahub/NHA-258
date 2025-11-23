@@ -20,14 +20,18 @@ namespace SmartTransportation.Web.API.Controllers
             _vehicleService = vehicleService;
         }
 
+        /// <summary>
+        /// Helper method: returns Unauthorized if CurrentUserId is missing
+        /// </summary>
         private IActionResult UnauthorizedIfNoUserId()
         {
-            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId == null)
+                return Unauthorized("UserId claim missing in token.");
             return null;
         }
 
         // ---------------------------
-        // Get current driver full profile
+        // GET: Current driver's full profile
         // ---------------------------
         [HttpGet("profile")]
         public async Task<IActionResult> GetCurrentDriverProfile()
@@ -42,7 +46,7 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // ---------------------------
-        // Get driver by ID
+        // GET: Driver full profile by ID (self only)
         // ---------------------------
         [HttpGet("{driverId}")]
         public async Task<IActionResult> GetDriverFull(int driverId)
@@ -59,7 +63,7 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // ---------------------------
-        // Create driver
+        // POST: Create driver (binds to current user)
         // ---------------------------
         [HttpPost]
         public async Task<IActionResult> CreateDriver([FromBody] CreateDriverProfileDTO dto)
@@ -72,7 +76,7 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // ---------------------------
-        // Update current driver profile
+        // PUT: Update current driver profile
         // ---------------------------
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateCurrentDriverProfile([FromBody] UpdateDriverProfileDTO dto)
@@ -87,15 +91,16 @@ namespace SmartTransportation.Web.API.Controllers
         }
 
         // ---------------------------
-        // Vehicle endpoints
-        // ---------------------------
+        // POST: Create vehicle for current driver
         [HttpPost("vehicle")]
         public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleDTO dto)
         {
             var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
+            // Always bind vehicle to the logged-in driver
             var result = await _vehicleService.CreateVehicleAsync(CurrentUserId.Value, dto);
+
             return Ok(result);
         }
 
@@ -105,14 +110,21 @@ namespace SmartTransportation.Web.API.Controllers
             var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var vehicle = await _vehicleService.GetByIdAsync(dto.VehicleId);
-            if (vehicle == null) return NotFound();
-            if (vehicle.DriverId != CurrentUserId.Value) return Forbid();
+            // Get the vehicle assigned to current driver
+            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
+            if (vehicle == null)
+                return NotFound(new { Error = "NotFound", Message = "Vehicle does not exist for this driver." });
 
-            var result = await _vehicleService.UpdateVehicleAsync(dto.VehicleId, dto);
-            return Ok(result);
+            // Update only using DTO fields
+            var updated = await _vehicleService.UpdateVehicleAsync(vehicle.VehicleId, dto);
+
+            return Ok(updated);
         }
 
+
+        // ---------------------------
+        // GET: Get current driver's vehicle
+        // ---------------------------
         [HttpGet("vehicle")]
         public async Task<IActionResult> GetVehicle()
         {
@@ -120,7 +132,8 @@ namespace SmartTransportation.Web.API.Controllers
             if (unauthorized != null) return unauthorized;
 
             var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
-            if (vehicle == null) return NotFound();
+            if (vehicle == null)
+                return NotFound(new { Error = "NotFound", Message = "No vehicle found for this driver." });
 
             return Ok(vehicle);
         }

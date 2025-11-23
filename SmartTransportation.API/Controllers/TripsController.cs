@@ -9,7 +9,7 @@ namespace SmartTransportation.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Only logged-in users
+    [Authorize]
     public class TripsController : BaseApiController
     {
         private readonly ITripService _tripService;
@@ -20,7 +20,7 @@ namespace SmartTransportation.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Driver")] // Only drivers can create
+        [Authorize(Roles = "Driver")]
         public async Task<IActionResult> CreateTrip([FromBody] CreateTripDTO tripDto)
         {
             if (!ModelState.IsValid)
@@ -53,6 +53,19 @@ namespace SmartTransportation.Controllers
         {
             var trips = await _tripService.GetTripsByRouteIdAsync(routeId);
             return Ok(trips);
+        }
+
+        // ⭐ Search Trips Endpoint
+        [HttpGet("search")]
+        [AllowAnonymous]
+        public async Task<IActionResult> SearchTrips(
+            [FromQuery] string? from,
+            [FromQuery] string? to,
+            [FromQuery] DateTime? date,
+            [FromQuery] int passengers = 1)
+        {
+            var results = await _tripService.SearchTripsAsync(from, to, date, passengers);
+            return Ok(results);
         }
 
         [HttpPost("{id}/start")]

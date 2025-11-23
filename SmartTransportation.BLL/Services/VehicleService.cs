@@ -2,6 +2,7 @@
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models;
 using SmartTransportation.DAL.Repositories.UnitOfWork;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,9 +19,16 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDTO> CreateVehicleAsync(int driverId, CreateVehicleDTO dto)
     {
+        var existing = await _unitOfWork.Vehicles
+            .GetQueryable()
+            .FirstOrDefaultAsync(v => v.DriverId == driverId);
+
+        if (existing != null)
+            throw new Exception("Driver already has a vehicle.");
+
         var entity = new Vehicle
         {
-            DriverId = driverId,  // assign from JWT
+            DriverId = driverId,
             VehicleMake = dto.VehicleMake,
             VehicleModel = dto.VehicleModel,
             VehicleYear = dto.VehicleYear,
@@ -44,14 +52,15 @@ public class VehicleService : IVehicleService
         var entity = await _unitOfWork.Vehicles.GetByIdAsync(vehicleId);
         if (entity == null) return null;
 
-        entity.VehicleMake = dto.VehicleMake ?? entity.VehicleMake;
-        entity.VehicleModel = dto.VehicleModel ?? entity.VehicleModel;
-        entity.VehicleYear = dto.VehicleYear ?? entity.VehicleYear;
-        entity.PlateNumber = dto.PlateNumber ?? entity.PlateNumber;
-        entity.Color = dto.Color ?? entity.Color;
-        entity.SeatsCount = dto.SeatsCount;
-        entity.VehicleLicenseNumber = dto.VehicleLicenseNumber ?? entity.VehicleLicenseNumber;
-        entity.VehicleLicenseExpiry = dto.VehicleLicenseExpiry ?? entity.VehicleLicenseExpiry;
+        // Safe partial updates
+        if (!string.IsNullOrWhiteSpace(dto.VehicleMake)) entity.VehicleMake = dto.VehicleMake;
+        if (!string.IsNullOrWhiteSpace(dto.VehicleModel)) entity.VehicleModel = dto.VehicleModel;
+        if (dto.VehicleYear.HasValue) entity.VehicleYear = dto.VehicleYear.Value;
+        if (!string.IsNullOrWhiteSpace(dto.PlateNumber)) entity.PlateNumber = dto.PlateNumber;
+        if (!string.IsNullOrWhiteSpace(dto.Color)) entity.Color = dto.Color;
+        if (dto.SeatsCount > 0) entity.SeatsCount = dto.SeatsCount;
+        if (!string.IsNullOrWhiteSpace(dto.VehicleLicenseNumber)) entity.VehicleLicenseNumber = dto.VehicleLicenseNumber;
+        if (dto.VehicleLicenseExpiry.HasValue) entity.VehicleLicenseExpiry = dto.VehicleLicenseExpiry.Value;
 
         _unitOfWork.Vehicles.Update(entity);
         await _unitOfWork.SaveAsync();
@@ -67,8 +76,10 @@ public class VehicleService : IVehicleService
 
     public async Task<VehicleDTO> GetVehicleByDriverIdAsync(int driverId)
     {
-        var entity = (await _unitOfWork.Vehicles.GetAllAsync())
-                     .FirstOrDefault(v => v.DriverId == driverId);
+        var entity = await _unitOfWork.Vehicles
+            .GetQueryable()
+            .FirstOrDefaultAsync(v => v.DriverId == driverId);
+
         return entity == null ? null : MapToVehicleDTO(entity);
     }
 
@@ -84,14 +95,13 @@ public class VehicleService : IVehicleService
         if (entity == null) return false;
 
         entity.IsVerified = isVerified;
+
         _unitOfWork.Vehicles.Update(entity);
         await _unitOfWork.SaveAsync();
+
         return true;
     }
 
-    // ----------------------
-    // Manual mapping helper
-    // ----------------------
     private VehicleDTO MapToVehicleDTO(Vehicle entity)
     {
         return new VehicleDTO
