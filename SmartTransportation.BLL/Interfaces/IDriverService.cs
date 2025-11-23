@@ -1,4 +1,5 @@
-﻿using SmartTransportation.BLL.DTOs.Profile;
+﻿using SmartTransportation.BLL.DTOs.Driver;
+using SmartTransportation.BLL.DTOs.Profile;
 
 public interface IDriverService
 {
@@ -8,4 +9,6 @@ public interface IDriverService
     Task<DriverProfileDTO> GetDriverByIdAsync(int driverId);
     Task<IEnumerable<DriverProfileDTO>> GetAllDriversAsync();
     Task<bool> VerifyDriverAsync(int driverId, bool isVerified);
+    Task<DriverDashboardDto> GetDashboardAsync(int driverId);
+
 }

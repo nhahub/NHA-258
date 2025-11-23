@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using SmartTransportation.BLL.DTOs.Driver;
 using SmartTransportation.BLL.DTOs.Profile;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models;
@@ -17,6 +18,77 @@ namespace SmartTransportation.BLL.Services
         public DriverService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
+        }
+
+        public async Task<DriverDashboardDto> GetDashboardAsync(int driverId)
+        {
+            // 1) Load driver for name
+            var driver = await _unitOfWork.Users.GetByIdAsync(driverId);
+            var driverName = driver?.UserProfile?.FullName ?? "Driver";
+
+            // 2) Load all trips created by this driver
+            var trips = await _unitOfWork.Trips.FindAsync(t => t.DriverId == driverId);
+            var tripsList = trips.ToList();
+            var now = DateTime.UtcNow;
+
+            var totalTrips = tripsList.Count;
+
+            var upcomingTrips = tripsList.Count(t =>
+                t.StartTime > now &&
+                !string.Equals(t.Status, "Canceled", StringComparison.OrdinalIgnoreCase));
+
+            // 3) Load all bookings for these trips
+            var tripIds = tripsList.Select(t => t.TripId).ToList();
+
+            var bookings = tripIds.Any()
+                ? (await _unitOfWork.Bookings.FindAsync(b => tripIds.Contains(b.TripId))).ToList()
+                : new List<Booking>();
+
+            var activeBookings = bookings.Count(b =>
+                !string.Equals(b.BookingStatus, "Canceled", StringComparison.OrdinalIgnoreCase));
+
+            // Total driver earnings from PAID bookings
+            var totalEarnings = bookings
+                .Where(b => string.Equals(b.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
+                .Sum(b => b.TotalAmount);
+
+            // 4) Map trips → DTO list
+            var tripsDto = tripsList.Select(t =>
+            {
+                var fromLocation = t.Route?.StartLocation ?? "N/A";
+                var toLocation = t.Route?.EndLocation ?? "N/A";
+
+                var tripBookings = bookings.Where(b => b.TripId == t.TripId);
+                var currentPassengers = tripBookings.Sum(b => b.SeatsCount);
+
+                return new DriverDashboardTripDto
+                {
+                    TripId = t.TripId,
+                    FromLocation = fromLocation,
+                    ToLocation = toLocation,
+                    DepartureDate = t.StartTime,
+                    DepartureTime = t.StartTime.ToString("HH:mm"),
+                    MaxPassengers = t.AvailableSeats,
+                    CurrentPassengers = currentPassengers,
+                    Price = t.PricePerSeat,
+                    Status = t.Status
+                };
+            }).ToList();
+
+            // 5) Notifications (empty for now — easy to add later)
+            var notificationsDto = new List<DriverDashboardNotificationDto>();
+
+            // 6) Return final dashboard object
+            return new DriverDashboardDto
+            {
+                DriverName = driverName,
+                TotalTrips = totalTrips,
+                UpcomingTrips = upcomingTrips,
+                ActiveBookings = activeBookings,
+                TotalEarnings = totalEarnings,
+                Trips = tripsDto,
+                Notifications = notificationsDto
+            };
         }
 
         public async Task<DriverProfileDTO> CreateDriverAsync(CreateDriverProfileDTO dto, int userId)

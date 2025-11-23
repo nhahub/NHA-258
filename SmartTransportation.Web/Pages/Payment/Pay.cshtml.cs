@@ -56,10 +56,26 @@ namespace SmartTransportation.Web.Pages.Payment
             var apiBase = _config["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl is not configured.");
 
             // Attach JWT token from session
-            var token = HttpContext.Session.GetString("JwtToken");
+            // Attach JWT token (same style as other pages)
+            string token = null;
+
+            // Prefer the auth cookie
+            if (Request.Cookies.ContainsKey("AuthToken"))
+            {
+                token = Request.Cookies["AuthToken"];
+            }
+            else
+            {
+                // Fallback to session if you ever store it there
+                token = HttpContext.Session.GetString("JwtToken");
+            }
+
             if (!string.IsNullOrEmpty(token))
+            {
                 client.DefaultRequestHeaders.Authorization =
                     new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            }
+
 
             // 1️⃣ Verify booking ownership
             BookingDto booking;

@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+﻿using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Configuration;
 
 namespace SmartTransportation.Web.Pages
 {
@@ -23,9 +26,33 @@ namespace SmartTransportation.Web.Pages
         public bool IsRead { get; set; }
     }
 
+    // This matches /api/Driver/dashboard response (DriverDashboardDto)
+    public class DriverDashboardVm
+    {
+        public string DriverName { get; set; } = string.Empty;
+        public int TotalTrips { get; set; }
+        public int UpcomingTrips { get; set; }
+        public int ActiveBookings { get; set; }
+        public decimal TotalEarnings { get; set; }
+        public List<TripDto> Trips { get; set; } = new();
+        public List<NotificationDto> Notifications { get; set; } = new();
+    }
+
     public class DriverDashboardModel : PageModel
     {
-        public string DriverName { get; set; } = "Ahmed";
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
+
+        public DriverDashboardModel(IHttpClientFactory httpClientFactory, IConfiguration config)
+        {
+            _httpClientFactory = httpClientFactory;
+            _config = config;
+        }
+
+        private string ApiBase =>
+            _config["ApiBaseUrl"] ?? throw new InvalidOperationException("ApiBaseUrl missing in config.");
+
+        public string DriverName { get; set; } = "Driver";
         public int TotalTrips { get; set; }
         public int UpcomingTrips { get; set; }
         public int ActiveBookings { get; set; }
@@ -34,85 +61,64 @@ namespace SmartTransportation.Web.Pages
         public List<TripDto> Trips { get; set; } = new();
         public List<NotificationDto> Notifications { get; set; } = new();
 
-        public void OnGet()
+        public string? ErrorMessage { get; set; }
+
+        public async Task OnGetAsync()
         {
-            // TODO: Fetch from database via services
-            // var driverId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            // var driver = await _driverService.GetDriverByIdAsync(driverId);
-            // DriverName = driver.FirstName;
+            await LoadDashboardAsync();
+        }
 
-            // Mock data for now
-            TotalTrips = 45;
-            UpcomingTrips = 5;
-            ActiveBookings = 12;
-            TotalEarnings = 15750.00m;
-
-            // Sample trips
-            Trips = new List<TripDto>
+        private async Task LoadDashboardAsync()
+        {
+            try
             {
-                new TripDto
-                {
-                    TripId = 1,
-                    FromLocation = "Cairo",
-                    ToLocation = "Alexandria",
-                    DepartureDate = DateTime.Now.AddDays(1),
-                    DepartureTime = "08:00 AM",
-                    MaxPassengers = 4,
-                    CurrentPassengers = 2,
-                    Price = 150.00m,
-                    Status = "Upcoming"
-                },
-                new TripDto
-                {
-                    TripId = 2,
-                    FromLocation = "Giza",
-                    ToLocation = "Luxor",
-                    DepartureDate = DateTime.Now.AddDays(3),
-                    DepartureTime = "06:00 PM",
-                    MaxPassengers = 6,
-                    CurrentPassengers = 4,
-                    Price = 350.00m,
-                    Status = "Upcoming"
-                },
-                new TripDto
-                {
-                    TripId = 3,
-                    FromLocation = "Cairo",
-                    ToLocation = "Hurghada",
-                    DepartureDate = DateTime.Now.AddDays(-2),
-                    DepartureTime = "09:00 AM",
-                    MaxPassengers = 4,
-                    CurrentPassengers = 4,
-                    Price = 400.00m,
-                    Status = "Completed"
-                }
-            };
+                var client = _httpClientFactory.CreateClient();
 
-            // Sample notifications
-            Notifications = new List<NotificationDto>
-            {
-                new NotificationDto
+                // 🔐 Same auth pattern as other pages: JWT from AuthToken cookie
+                string? token = null;
+
+                if (Request.Cookies.ContainsKey("AuthToken"))
                 {
-                    NotificationId = 1,
-                    Message = "New booking for your Cairo → Alexandria trip",
-                    CreatedAt = DateTime.Now.AddHours(-2),
-                    IsRead = false
-                },
-                new NotificationDto
-                {
-                    NotificationId = 2,
-                    Message = "Payment received: 150 EGP",
-                    CreatedAt = DateTime.Now.AddHours(-5),
-                    IsRead = false
-                },
-                new NotificationDto
-                {
-                    NotificationId = 3,
-                    Message = "Trip reminder: Departure in 24 hours",
-                    CreatedAt = DateTime.Now.AddDays(-1),
-                    IsRead = true
+                    token = Request.Cookies["AuthToken"];
                 }
-            };
+                else
+                {
+                    // Optional fallback if you ever keep JWT in session
+                    token = HttpContext.Session.GetString("JwtToken");
+                }
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    client.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", token);
+                }
+
+                var response = await client.GetAsync($"{ApiBase}/api/Driver/dashboard");
+                if (!response.IsSuccessStatusCode)
+                {
+                    ErrorMessage = $"Failed to load dashboard (status {response.StatusCode}).";
+                    return;
+                }
+
+                var dto = await response.Content.ReadFromJsonAsync<DriverDashboardVm>();
+                if (dto == null)
+                {
+                    ErrorMessage = "Failed to parse dashboard data.";
+                    return;
+                }
+
+                DriverName = dto.DriverName;
+                TotalTrips = dto.TotalTrips;
+                UpcomingTrips = dto.UpcomingTrips;
+                ActiveBookings = dto.ActiveBookings;
+                TotalEarnings = dto.TotalEarnings;
+                Trips = dto.Trips ?? new();
+                Notifications = dto.Notifications ?? new();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = $"Error loading dashboard: {ex.Message}";
+            }
         }
     }
 }

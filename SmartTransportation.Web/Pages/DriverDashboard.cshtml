@@ -2,7 +2,6 @@
 @model DriverDashboardModel
 @{
     ViewData["Title"] = "Driver Dashboard - Move Smart";
-    Layout = "_Layout";
 }
 
 @section Styles {
@@ -210,144 +209,198 @@
 }
 
 <div class="dashboard-container">
-    <!-- Welcome Header -->
+
+    <!-- Header -->
     <div class="dashboard-header">
-        <h1>Welcome back, @Model.DriverName!</h1>
-        <p style="color: var(--gray-600); margin-top: 8px;">Here's your driving overview for today</p>
+        <h2 style="margin-bottom: 4px;">Welcome, @Model.DriverName</h2>
+        <p style="margin: 0; color: var(--gray-600);">
+            Here is an overview of your trips, bookings, and earnings.
+        </p>
     </div>
 
-    <!-- Statistics Cards -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @Model.ErrorMessage
+        </div>
+    }
+
+    <!-- Stats -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-value">@Model.TotalTrips</div>
             <div class="stat-label">Total Trips</div>
         </div>
+
         <div class="stat-card">
             <div class="stat-value">@Model.UpcomingTrips</div>
             <div class="stat-label">Upcoming Trips</div>
         </div>
+
         <div class="stat-card">
             <div class="stat-value">@Model.ActiveBookings</div>
             <div class="stat-label">Active Bookings</div>
         </div>
+
         <div class="stat-card">
-            <div class="stat-value">@Model.TotalEarnings EGP</div>
-            <div class="stat-label">Total Earnings</div>
+            <div class="stat-value">@Model.TotalEarnings.ToString("0.00")</div>
+            <div class="stat-label">Total Earnings (EGP)</div>
         </div>
     </div>
 
-    <!-- Main Content Grid -->
+    <!-- Main content -->
     <div class="content-grid">
-        <!-- Trips Section -->
-        <div class="trips-section">
+
+        <!-- Left: Trips -->
+        <section class="trips-section">
             <div class="section-title">
-                <span>My Trips</span>
-                <a asp-page="/Trips/Create" class="btn btn-primary btn-small">+ Add New Trip</a>
+                <span>Your Trips</span>
+                <a asp-page="/Driver/Trips/Create" class="btn-small btn-edit">
+                    + Create Trip
+                </a>
             </div>
 
             @if (Model.Trips != null && Model.Trips.Any())
             {
-                @foreach (var trip in Model.Trips)
+                @foreach (var trip in Model.Trips.OrderByDescending(t => t.DepartureDate))
                 {
+                    var statusClass = "status-upcoming";
+                    if (string.Equals(trip.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                    {
+                        statusClass = "status-completed";
+                    }
+                    else if (string.Equals(trip.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        statusClass = "status-active";
+                    }
+                    else if (string.Equals(trip.Status, "Canceled", StringComparison.OrdinalIgnoreCase))
+                    {
+                        statusClass = "status-completed";
+                    }
+
                     <div class="trip-card">
                         <div class="trip-header">
-                            <div class="trip-route">@trip.FromLocation → @trip.ToLocation</div>
-                            <span class="trip-status status-@trip.Status.ToLower()">@trip.Status</span>
+                            <div>
+                                <div class="trip-route">
+                                    @trip.FromLocation <span style="color: var(--gray-500);">→</span> @trip.ToLocation
+                                </div>
+                                <div style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                                    Trip ID: #@trip.TripId
+                                </div>
+                            </div>
+
+                            <div class="trip-status @statusClass">
+                                @trip.Status
+                            </div>
                         </div>
-                        
+
                         <div class="trip-details">
                             <div class="trip-detail">
-                                <strong>Date:</strong> @trip.DepartureDate.ToString("MMM dd, yyyy")
+                                <strong>Date:</strong>
+                                @trip.DepartureDate.ToString("yyyy-MM-dd")
                             </div>
                             <div class="trip-detail">
-                                <strong>Time:</strong> @trip.DepartureTime
+                                <strong>Time:</strong>
+                                @trip.DepartureTime
                             </div>
                             <div class="trip-detail">
-                                <strong>Passengers:</strong> @trip.CurrentPassengers/@trip.MaxPassengers
+                                <strong>Seats:</strong>
+                                @trip.CurrentPassengers / @trip.MaxPassengers
                             </div>
                             <div class="trip-detail">
-                                <strong>Price:</strong> @trip.Price EGP
+                                <strong>Price per seat:</strong>
+                                @trip.Price.ToString("0.00") EGP
                             </div>
                         </div>
 
                         <div class="trip-actions">
-                            <button class="btn-small btn-view" onclick="viewTrip(@trip.TripId)">View Details</button>
-                            <button class="btn-small btn-edit" onclick="editTrip(@trip.TripId)">Edit</button>
-                            <button class="btn-small btn-delete" onclick="deleteTrip(@trip.TripId)">Delete</button>
+                            <a asp-page="/Driver/Trips/Details"
+                               asp-route-id="@trip.TripId"
+                               class="btn-small btn-view">
+                                View Details
+                            </a>
+
+                            <a asp-page="/Driver/Trips/Edit"
+                               asp-route-id="@trip.TripId"
+                               class="btn-small btn-edit">
+                                Edit Trip
+                            </a>
+
+                            <a asp-page="/Driver/Trips/Bookings"
+                               asp-route-id="@trip.TripId"
+                               class="btn-small btn-view">
+                                View Bookings
+                            </a>
                         </div>
                     </div>
                 }
             }
             else
             {
-                <div style="text-align: center; padding: 40px; color: var(--gray-600);">
-                    <p>No trips yet. Create your first trip to get started!</p>
-                    <a asp-page="/AddTrip" class="btn btn-primary" style="margin-top: 16px; display: inline-block;">Create Trip</a>
-                </div>
+                <p style="color: var(--gray-600);">
+                    You don’t have any trips yet.
+                    <a asp-page="/Driver/Trips/Create">Create your first trip</a>.
+                </p>
             }
-        </div>
+        </section>
 
-        <!-- Sidebar -->
-        <div>
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <h3 style="margin-bottom: 16px;">Quick Actions</h3>
-                <a asp-page="/AddTrip" class="action-btn">+ Create New Trip</a>
-                <a asp-page="/Driver_Profile" class="action-btn">👤 My Profile</a>
-                <a asp-page="/Bookings" class="action-btn">📋 View Bookings</a>
-                <a asp-page="/Earnings" class="action-btn">💰 Earnings Report</a>
+        <!-- Right: Quick actions + notifications -->
+        <aside class="quick-actions">
+            <div class="section-title" style="margin-bottom: 16px;">
+                <span>Quick Actions</span>
             </div>
 
-            <!-- Notifications -->
-            <div class="quick-actions" style="margin-top: 24px;">
-                <h3 style="margin-bottom: 16px;">Recent Notifications</h3>
-                <div class="notifications-list">
-                    @if (Model.Notifications != null && Model.Notifications.Any())
-                    {
-                        @foreach (var notification in Model.Notifications)
-                        {
-                            <div class="notification-item">
-                                @notification.Message
-                                <div style="font-size: 12px; color: var(--gray-600); margin-top: 4px;">
-                                    @notification.CreatedAt.ToString("MMM dd, hh:mm tt")
-                                </div>
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <p style="color: var(--gray-600); font-size: 14px;">No new notifications</p>
-                    }
+            <button type="button"
+                    class="action-btn"
+                    onclick="window.location.href='@Url.Page("/Driver/Trips/Create")'">
+                + Create New Trip
+            </button>
+
+            <button type="button"
+                    class="action-btn"
+                    onclick="window.location.href='@Url.Page("/Driver/Vehicle/Edit")'">
+                Manage Vehicle
+            </button>
+
+            <button type="button"
+                    class="action-btn"
+                    onclick="window.location.href='@Url.Page("/Driver/Payments/History")'">
+                View Payment History
+            </button>
+
+            <div class="notifications-list">
+                <div class="section-title" style="margin-bottom: 12px;">
+                    <span style="font-size:16px;">Notifications</span>
                 </div>
+
+                @if (Model.Notifications != null && Model.Notifications.Any())
+                {
+                    @foreach (var n in Model.Notifications.OrderByDescending(n => n.CreatedAt))
+                    {
+                        <div class="notification-item">
+                            <div style="margin-bottom: 4px;">
+                                @n.Message
+                            </div>
+                            <div style="font-size: 12px; color: var(--gray-500);">
+                                @n.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                @if (!n.IsRead)
+                                {
+                                    <span style="margin-left: 8px; font-weight: 600; color: var(--primary);">
+                                        • New
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p style="color: var(--gray-600); font-size: 14px;">
+                        No notifications at the moment.
+                    </p>
+                }
             </div>
-        </div>
+        </aside>
+
     </div>
 </div>
-
-@section Scripts {
-<script>
-    function viewTrip(tripId) {
-        window.location.href = `/TripDetails?id=${tripId}`;
-    }
-
-    function editTrip(tripId) {
-        window.location.href = `/EditTrip?id=${tripId}`;
-    }
-
-    function deleteTrip(tripId) {
-        if (confirm('Are you sure you want to delete this trip?')) {
-            // TODO: Implement delete trip API call
-            fetch(`/api/trips/${tripId}`, {
-                method: 'DELETE'
-            })
-            .then(response => {
-                if (response.ok) {
-                    location.reload();
-                } else {
-                    alert('Failed to delete trip');
-                }
-            });
-        }
-    }
-</script>
-}

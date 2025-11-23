@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SmartTransportation.BLL.DTOs.Driver;
 using SmartTransportation.BLL.DTOs.Profile;
 using SmartTransportation.BLL.Interfaces;
 using System.Threading.Tasks;
@@ -19,6 +20,21 @@ namespace SmartTransportation.Web.API.Controllers
             _driverService = driverService;
             _vehicleService = vehicleService;
         }
+
+
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboard()
+        {
+            var unauthorized = UnauthorizedIfNoUserId();
+            if (unauthorized != null) return unauthorized;
+
+            var dashboard = await _driverService.GetDashboardAsync(CurrentUserId!.Value);
+
+            return Ok(dashboard);
+        }
+
+
+
 
         /// <summary>
         /// Helper method: returns Unauthorized if CurrentUserId is missing
