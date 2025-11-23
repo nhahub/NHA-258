@@ -131,6 +131,15 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
             try
             {
                 var client = _httpClientFactory.CreateClient();
+
+                // Attach JWT token
+                if (Request.Cookies.ContainsKey("AuthToken"))
+                {
+                    var token = Request.Cookies["AuthToken"];
+                    client.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", token);
+                }
+
                 Vehicle = await client.GetFromJsonAsync<VehicleVm>($"{ApiBase}/api/Driver/vehicle");
                 return Vehicle != null;
             }
@@ -140,6 +149,10 @@ namespace SmartTransportation.Web.Pages.Driver.Trips
                 return false;
             }
         }
+
+
+
+
 
         public async Task<IActionResult> OnGetAsync()
         {
