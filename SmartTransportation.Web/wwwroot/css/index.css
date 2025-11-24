@@ -1,0 +1,234 @@
+﻿.hero {
+    position: relative;
+    min-height: 85vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 50%, #fafbff 100%);
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60%;
+    height: 100%;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><rect fill="%23d0dff9" opacity="0.3" width="1000" height="1000"/></svg>');
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+    padding: 80px 0;
+}
+
+.hero h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1.1;
+    margin: 0 0 24px;
+    font-weight: 900;
+    color: var(--black);
+    letter-spacing: -0.02em;
+}
+
+.hero p {
+    font-size: 18px;
+    line-height: 1.7;
+    color: var(--gray-700);
+    margin: 0 0 32px;
+    max-width: 700px;
+}
+
+/* Sections */
+section {
+    padding: 80px 0;
+}
+
+.section-title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 48px;
+    color: var(--black);
+}
+
+.section-lead {
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto 48px;
+    color: var(--gray-700);
+    font-size: 1.125rem;
+}
+
+/* Core Features Grid */
+.core-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+    margin-top: 48px;
+}
+
+.core-card {
+    background: white;
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    transition: all 0.3s;
+}
+
+    .core-card:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+    }
+
+    .core-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 16px;
+        color: var(--black);
+    }
+
+    .core-card p {
+        color: var(--gray-700);
+        line-height: 1.6;
+    }
+
+/* Benefits Grid */
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 32px;
+}
+
+.benefit-card {
+    text-align: center;
+    padding: 32px 24px;
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--gray-200);
+    transition: all 0.3s;
+}
+
+    .benefit-card:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-4px);
+    }
+
+.benefit-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: var(--primary-bg);
+    border-radius: 20px;
+    display: grid;
+    place-items: center;
+}
+
+.benefit-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+    color: var(--black);
+}
+
+.benefit-card p {
+    color: var(--gray-700);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* Get Started Section */
+#get-started {
+    background: linear-gradient(135deg, #e8f0fe 0%, #f0f4ff 100%);
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 32px;
+    margin-bottom: 48px;
+}
+
+.step-card {
+    text-align: center;
+    padding: 32px 24px;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.step-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: var(--primary-bg);
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+}
+
+.step-card h3 {
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+    color: var(--black);
+}
+
+.step-card p {
+    color: var(--gray-700);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.cta-buttons {
+    text-align: center;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-white {
+    background: white;
+    color: var(--primary);
+    border: 2px solid white;
+}
+
+    .btn-white:hover {
+        background: var(--primary-bg);
+    }
+
+.btn-outline {
+    background: transparent;
+    color: white;
+    border: 2px solid white;
+}
+
+    .btn-outline:hover {
+        background: white;
+        color: var(--primary);
+    }
+
+@@media (max-width: 768px) {
+    .hero {
+        min-height: auto;
+        padding: 60px 0;
+    }
+
+    .hero-content {
+        padding: 40px 0;
+    }
+
+    section {
+        padding: 60px 0;
+    }
+
+    .core-grid, .benefits-grid, .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+}
+
