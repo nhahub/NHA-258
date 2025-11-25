@@ -7,156 +7,222 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/index.css" />
-
 }
 
-<!-- Hero Section -->
+<!-- ============================= -->
+<!-- DEBUG INFO - REMOVE AFTER TESTING -->
+<!-- ============================= -->
+<div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; margin: 20px auto; max-width: 1280px; border-radius: 8px;">
+    <h3 style="color: #92400e; margin-bottom: 10px;">🔍 DEBUG INFO (Remove this section after testing)</h3>
+    <div style="font-family: monospace; font-size: 14px; color: #78350f;">
+        <strong>Authentication Status:</strong> @(User.Identity?.IsAuthenticated == true ? "✅ LOGGED IN" : "❌ LOGGED OUT")<br />
+        <strong>User Name:</strong> @(User.Identity?.Name ?? "None")<br />
+        <strong>User Role:</strong> @(User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "None")<br />
+        <strong>Claims Count:</strong> @User.Claims.Count()<br />
+        <strong>Current Time:</strong> @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")<br />
+        <strong>Expected Behavior:</strong>
+        <ul style="margin-top: 10px;">
+            <li>When LOGGED IN: Should show "Hello, [Name]" and "Logout" button in header</li>
+            <li>When LOGGED OUT: Should show "Login" and "Get Started" buttons in header</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ============================= -->
+<!-- HERO SECTION -->
+<!-- ============================= -->
 <section class="hero">
-    <div class="container">
+    <div class="container hero-container">
+
+        <!-- Hero Text -->
         <div class="hero-content">
-            <h1>Move Smart</h1>
-            <p style="font-size: 1.5rem; font-weight: 600; margin-bottom: 16px;">Drive Smarter, Safer, and Stay Connected</p>
-            <p>Transform your car into a fully connected, intelligent vehicle. Track trips, manage your EV, control access remotely, and get instant diagnostics—all from your phone.</p>
-            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <h1 class="hero-title">Move Smart</h1>
+            <p class="hero-subtitle">Drive Smarter, Safer, and Stay Connected</p>
+
+            <p class="hero-desc">
+                Transform your car into a connected, intelligent vehicle. Track trips, manage EV charging, share digital keys, and receive instant diagnostics.
+            </p>
+
+            <div class="hero-buttons">
                 <a asp-page="/sign_up" class="btn btn-primary">Get Started Free</a>
-                <a href="#features" class="btn btn-secondary">Learn More</a>
+                <a href="#features" class="btn btn-secondary">Explore Features</a>
             </div>
         </div>
+
+        <!-- Hero Image -->
+        <div class="hero-image">
+            <img src="~/images/car-dashboard.png" alt="Move Smart Connected Car" />
+        </div>
+
     </div>
+
+    <!-- Scroll Indicator -->
+    <a href="#features" class="scroll-down">↓ Explore</a>
 </section>
 
-<!-- Core Features Section -->
-<section id="features">
+
+
+<!-- ============================= -->
+<!-- FEATURES SECTION -->
+<!-- ============================= -->
+<section id="features" class="section">
     <div class="container">
         <h2 class="section-title">Meet Move Smart's Core Features</h2>
 
         <div class="core-grid">
             <div class="core-card">
                 <h3>Real-Time Tracking & History</h3>
-                <p>View your vehicle's precise location and detailed trip history instantly. Know where your car is and review past routes effortlessly.</p>
+                <p>View your vehicle's precise location and check historical routes instantly.</p>
+                <a asp-page="/SearchTrip" class="card-link">View Trips →</a>
             </div>
 
             <div class="core-card">
-                <h3>Remote Access & Digital Key Sharing</h3>
-                <p>Lock or unlock your doors remotely. Share digital keys securely with trusted family or friends for effortless access management.</p>
+                <h3>Remote Access & Digital Keys</h3>
+                <p>Lock/unlock your vehicle remotely and securely share digital keys.</p>
+                <a asp-page="/DriverDashboard" class="card-link">Go to Dashboard →</a>
             </div>
 
             <div class="core-card">
-                <h3>EV Management & Mileage Verification</h3>
-                <p>Efficiently manage EV charging schedules and locations. Automated mileage verification simplifies expense and tax reporting.</p>
+                <h3>EV Management & Mileage</h3>
+                <p>Manage charging schedules and verify mileage for expenses and reporting.</p>
+                <a asp-page="/DriverDashboard" class="card-link">Check EV Status →</a>
             </div>
 
             <div class="core-card">
                 <h3>Instant Diagnostics & Alerts</h3>
-                <p>Receive instant notifications for maintenance needs, diagnostic trouble codes, and critical vehicle health status updates.</p>
+                <p>Receive alerts for maintenance issues, error codes, and vehicle health.</p>
+                <a asp-page="/DriverDashboard" class="card-link">View Diagnostics →</a>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Benefits Section -->
-<section id="benefits" style="background: var(--gray-50);">
+
+
+<!-- ============================= -->
+<!-- BENEFITS SECTION -->
+<!-- ============================= -->
+<section id="benefits" class="section alt">
     <div class="container">
         <h2 class="section-title">How Move Smart Makes Driving Safer and Easier</h2>
 
         <div class="benefits-grid">
+
             <div class="benefit-card">
                 <div class="benefit-icon">
                     <svg viewBox="0 0 24 24" width="40" height="40">
-                        <circle cx="12" cy="12" r="10" fill="#5b6fd8" />
-                        <path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none" />
+                        <circle cx="12" cy="12" r="10" fill="#5b6fd8"></circle>
+                        <path d="M12 6v6l4 2" stroke="white" stroke-width="2" fill="none"></path>
                     </svg>
                 </div>
                 <h3>Emergency Safety</h3>
-                <p>Integrated emergency assistance button and real-time driver performance insights for rapid response and safer habits.</p>
+                <p>Emergency alert features and driver performance insights keep you safe.</p>
             </div>
 
             <div class="benefit-card">
                 <div class="benefit-icon">
                     <svg viewBox="0 0 24 24" width="40" height="40">
-                        <rect x="4" y="4" width="16" height="16" rx="2" fill="#5b6fd8" />
-                        <path d="M8 12h8M12 8v8" stroke="white" stroke-width="2" />
+                        <rect x="4" y="4" width="16" height="16" rx="2" fill="#5b6fd8"></rect>
+                        <path d="M8 12h8M12 8v8" stroke="white" stroke-width="2"></path>
                     </svg>
                 </div>
                 <h3>Efficiency Boost</h3>
-                <p>Receive personalized driving tips to improve fuel efficiency and minimize wear and tear on your vehicle components.</p>
+                <p>Get insights and tips that help you drive efficiently and save more.</p>
             </div>
 
             <div class="benefit-card">
                 <div class="benefit-icon">
                     <svg viewBox="0 0 24 24" width="40" height="40">
-                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" fill="#5b6fd8" />
-                        <path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" fill="white" />
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z" fill="#5b6fd8"></path>
+                        <path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" fill="white"></path>
                     </svg>
                 </div>
                 <h3>Virtual Key Access</h3>
-                <p>Securely share virtual keys with family or trusted contacts, eliminating the need to exchange physical keys.</p>
+                <p>Securely share virtual keys with family and trusted contacts.</p>
             </div>
 
             <div class="benefit-card">
                 <div class="benefit-icon">
                     <svg viewBox="0 0 24 24" width="40" height="40">
-                        <circle cx="12" cy="12" r="10" fill="#5b6fd8" />
-                        <path d="M12 2v10l8 4" fill="white" />
+                        <circle cx="12" cy="12" r="10" fill="#5b6fd8"></circle>
+                        <path d="M12 2v10l8 4" fill="white"></path>
                     </svg>
                 </div>
                 <h3>Service Navigation</h3>
-                <p>Integrated maps guide you instantly to the nearest EV charging stations or certified service centers.</p>
+                <p>Find charging stations and service centers near you instantly.</p>
             </div>
+
         </div>
     </div>
 </section>
 
-<!-- Get Started Section -->
-<section id="get-started">
+
+
+<!-- ============================= -->
+<!-- GET STARTED SECTION -->
+<!-- ============================= -->
+<section id="get-started" class="section">
     <div class="container">
-        <h2 class="section-title">Get Started with Move Smart Today</h2>
-        <p class="section-lead">Transform your driving experience in just four simple steps. Joining the Move Smart community is fast, easy, and secure.</p>
+        <h2 class="section-title">Get Started with Move Smart</h2>
+        <p class="section-lead">
+            Join Move Smart in four simple steps. Fast, easy, and secure.
+        </p>
 
         <div class="steps-grid">
+
             <div class="step-card">
                 <div class="step-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" fill="#5b6fd8" />
+                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z" fill="#5b6fd8"></path>
                     </svg>
                 </div>
                 <h3>Download the App</h3>
-                <p>Find Move Smart on the iOS App Store and Google Play Store.</p>
+                <p>Available on iOS and Google Play.</p>
             </div>
 
             <div class="step-card">
                 <div class="step-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#5b6fd8" />
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#5b6fd8"></path>
                     </svg>
                 </div>
                 <h3>Create Your Account</h3>
-                <p>Sign up quickly with your email or social credentials.</p>
+                <p>Sign up using your email or social login.</p>
             </div>
 
             <div class="step-card">
                 <div class="step-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z" fill="#5b6fd8" />
+                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z" fill="#5b6fd8"></path>
                     </svg>
                 </div>
                 <h3>Connect Your Car</h3>
-                <p>Link your vehicle with four simple clicks using the secure Smartcar Connect process.</p>
+                <p>Link your vehicle using secure Smartcar integration.</p>
             </div>
 
             <div class="step-card">
                 <div class="step-icon">
                     <svg viewBox="0 0 24 24" width="32" height="32">
-                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="#5b6fd8" />
+                        <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="#5b6fd8"></path>
                     </svg>
                 </div>
                 <h3>Start Driving Smarter</h3>
-                <p>Unlock a smarter driving lifestyle and enjoy connected journeys.</p>
+                <p>Enjoy a fully connected driving experience.</p>
             </div>
+
         </div>
 
         <div class="cta-buttons">
-            <a asp-page="/sign_up" class="btn btn-primary" style="display: inline-flex;">Get Started Now</a>
+            <a asp-page="/sign_up" class="btn btn-primary">Start Now</a>
         </div>
     </div>
 </section>
+
+@section Scripts {
+    <script>
+        // Add visual confirmation when page loads
+        console.log('Page loaded at:', new Date().toLocaleTimeString());
+        console.log('User authenticated:', '@(User.Identity?.IsAuthenticated == true ? "true" : "false")');
+        console.log('User name:', '@(User.Identity?.Name ?? "None")');
+    </script>
+}

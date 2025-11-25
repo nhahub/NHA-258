@@ -1,6 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <Content Remove="Pages\logout_page_view.cshtml" />
+    <Content Remove="Pages\test_logout.cshtml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Pages\logout_page_view.cshtml" />
+    <None Include="Pages\test_logout.cshtml" />
+    <None Include="wwwroot\css\layout_css.css" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SmartTransportation.BLL\SmartTransportation.BLL.csproj" />
   </ItemGroup>
 

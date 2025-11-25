@@ -10,7 +10,6 @@ var builder = WebApplication.CreateBuilder(args);
 // ==========================================
 // Add Services
 // ==========================================
-
 // MVC Controllers + Views
 builder.Services.AddControllersWithViews();
 
@@ -34,22 +33,8 @@ builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserProfileService, PassengerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
-
 // ✅ Register StripePaymentService so it can be injected into Razor Pages
 builder.Services.AddScoped<StripePaymentService>();
-
-// ===================
-// Authentication (Cookie)
-// ===================
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Log_In";              // Redirect here if not authenticated
-        options.AccessDeniedPath = "/AccessDenied"; // Redirect here if user is unauthorized
-        options.ReturnUrlParameter = "ReturnUrl";   // Preserve ReturnUrl
-        options.ExpireTimeSpan = TimeSpan.FromHours(1);
-        options.SlidingExpiration = true;
-    });
 
 // ===================
 // Session (for JWT storage)
@@ -60,16 +45,50 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromHours(1);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // Added for logout
 });
+
+// ===================
+// Authentication (Cookie)
+// ===================
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Log_In";
+        options.LogoutPath = "/Logout";             // ✅ Explicit logout path
+        options.AccessDeniedPath = "/AccessDenied";
+        options.ReturnUrlParameter = "ReturnUrl";
+        options.ExpireTimeSpan = TimeSpan.FromHours(1);
+        options.SlidingExpiration = true;
+
+        // ✅ Added for proper logout behavior
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+
+        // ✅ Events to ensure clean logout
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnSigningOut = async context =>
+            {
+                // Clear any additional data on logout
+                context.HttpContext.Session.Clear();
+                await Task.CompletedTask;
+            }
+        };
+    });
 
 // ===================
 // Razor Pages Authorization
 // ===================
 builder.Services.AddRazorPages(options =>
 {
-    options.Conventions.AuthorizePage("/Dashboard");      // Require login for Dashboard
-    options.Conventions.AuthorizePage("/Driver_Profile"); // Require login for Driver Profile
-    options.Conventions.AuthorizePage("/Payment/Pay");    // Require login for Payment page
+    options.Conventions.AuthorizePage("/Dashboard");
+    options.Conventions.AuthorizePage("/Driver_Profile");
+    options.Conventions.AuthorizePage("/Payment/Pay");
+    options.Conventions.AuthorizePage("/customer-profile"); // ✅ Added
+    options.Conventions.AuthorizePage("/DriverDashboard");  // ✅ Added
+    options.Conventions.AuthorizePage("/AdminDashboard");   // ✅ Added
 });
 
 var app = builder.Build();
@@ -85,10 +104,21 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
 
 app.UseSession();          // ✅ Must be before Authentication
-app.UseAuthentication();   // Must come BEFORE authorization
+
+// ✅ Added: Middleware to prevent caching of authenticated pages
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+    context.Response.Headers["Pragma"] = "no-cache";
+    context.Response.Headers["Expires"] = "0";
+    await next();
+});
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 // ==========================================
