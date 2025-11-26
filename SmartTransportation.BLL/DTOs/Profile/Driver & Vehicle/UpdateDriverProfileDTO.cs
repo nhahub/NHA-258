@@ -1,15 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartTransportation.BLL.DTOs.Profile
 {
+    /// <summary>
+    /// DTO for updating driver-specific profile information
+    /// Inherits base user properties from BaseUserProfileDTO
+    /// </summary>
     public class UpdateDriverProfileDTO : BaseUserProfileDTO
     {
-        public string? DriverLicenseNumber { get; set; }
-        public DateOnly? DriverLicenseExpiry { get; set; }
-    }
+        /// <summary>
+        /// Driver's license number
+        /// </summary>
+        public string DriverLicenseNumber { get; set; }
 
+        /// <summary>
+        /// Driver's license expiry date
+        /// ⚠️ Changed from DateOnly? to DateTime? to match database entity
+        /// </summary>
+        public DateTime? DriverLicenseExpiry { get; set; }
+    }
 }

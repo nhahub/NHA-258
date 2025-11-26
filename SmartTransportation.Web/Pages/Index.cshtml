@@ -10,25 +10,6 @@
 }
 
 <!-- ============================= -->
-<!-- DEBUG INFO - REMOVE AFTER TESTING -->
-<!-- ============================= -->
-<div style="background: #fffbeb; border: 2px solid #f59e0b; padding: 20px; margin: 20px auto; max-width: 1280px; border-radius: 8px;">
-    <h3 style="color: #92400e; margin-bottom: 10px;">🔍 DEBUG INFO (Remove this section after testing)</h3>
-    <div style="font-family: monospace; font-size: 14px; color: #78350f;">
-        <strong>Authentication Status:</strong> @(User.Identity?.IsAuthenticated == true ? "✅ LOGGED IN" : "❌ LOGGED OUT")<br />
-        <strong>User Name:</strong> @(User.Identity?.Name ?? "None")<br />
-        <strong>User Role:</strong> @(User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "None")<br />
-        <strong>Claims Count:</strong> @User.Claims.Count()<br />
-        <strong>Current Time:</strong> @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")<br />
-        <strong>Expected Behavior:</strong>
-        <ul style="margin-top: 10px;">
-            <li>When LOGGED IN: Should show "Hello, [Name]" and "Logout" button in header</li>
-            <li>When LOGGED OUT: Should show "Login" and "Get Started" buttons in header</li>
-        </ul>
-    </div>
-</div>
-
-<!-- ============================= -->
 <!-- HERO SECTION -->
 <!-- ============================= -->
 <section class="hero">
@@ -38,26 +19,13 @@
         <div class="hero-content">
             <h1 class="hero-title">Move Smart</h1>
             <p class="hero-subtitle">Drive Smarter, Safer, and Stay Connected</p>
-
             <p class="hero-desc">
                 Transform your car into a connected, intelligent vehicle. Track trips, manage EV charging, share digital keys, and receive instant diagnostics.
             </p>
-
-            <div class="hero-buttons">
-                <a asp-page="/sign_up" class="btn btn-primary">Get Started Free</a>
-                <a href="#features" class="btn btn-secondary">Explore Features</a>
-            </div>
-        </div>
-
-        <!-- Hero Image -->
-        <div class="hero-image">
-            <img src="~/images/car-dashboard.png" alt="Move Smart Connected Car" />
         </div>
 
     </div>
 
-    <!-- Scroll Indicator -->
-    <a href="#features" class="scroll-down">↓ Explore</a>
 </section>
 
 
@@ -72,7 +40,7 @@
         <div class="core-grid">
             <div class="core-card">
                 <h3>Real-Time Tracking & History</h3>
-                <p>View your vehicle's precise location and check historical routes instantly.</p>
+                <p>View your vehicle’s precise location and check historical routes instantly.</p>
                 <a asp-page="/SearchTrip" class="card-link">View Trips →</a>
             </div>
 
@@ -217,12 +185,3 @@
         </div>
     </div>
 </section>
-
-@section Scripts {
-    <script>
-        // Add visual confirmation when page loads
-        console.log('Page loaded at:', new Date().toLocaleTimeString());
-        console.log('User authenticated:', '@(User.Identity?.IsAuthenticated == true ? "true" : "false")');
-        console.log('User name:', '@(User.Identity?.Name ?? "None")');
-    </script>
-}
