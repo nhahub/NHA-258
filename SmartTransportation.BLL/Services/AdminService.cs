@@ -169,7 +169,6 @@ namespace SmartTransportation.BLL.Services
         {
             return new DriverProfileDTO
             {
-                UserId = entity.UserId,
                 FullName = entity.FullName,
                 Phone = entity.Phone,
                 Address = entity.Address,
@@ -179,14 +178,8 @@ namespace SmartTransportation.BLL.Services
                 Gender = entity.Gender,
                 ProfilePhotoUrl = entity.ProfilePhotoUrl,
                 DriverLicenseNumber = entity.DriverLicenseNumber,
-                // ✅ Convert DateOnly? to DateTime?
-                DriverLicenseExpiry = entity.DriverLicenseExpiry.HasValue
-                    ? entity.DriverLicenseExpiry.Value.ToDateTime(TimeOnly.MinValue)
-                    : null,
-                // ✅ Convert decimal? to double?
-                DriverRating = entity.DriverRating.HasValue
-                    ? (double?)entity.DriverRating.Value
-                    : null,
+                DriverLicenseExpiry = entity.DriverLicenseExpiry,
+                DriverRating = entity.DriverRating,
                 IsDriverVerified = entity.IsDriverVerified,
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt
@@ -206,10 +199,7 @@ namespace SmartTransportation.BLL.Services
                 Color = entity.Color,
                 SeatsCount = entity.SeatsCount,
                 VehicleLicenseNumber = entity.VehicleLicenseNumber,
-                // ✅ Convert DateOnly? to DateTime?
-                VehicleLicenseExpiry = entity.VehicleLicenseExpiry.HasValue
-                    ? entity.VehicleLicenseExpiry.Value.ToDateTime(TimeOnly.MinValue)
-                    : null,
+                VehicleLicenseExpiry = entity.VehicleLicenseExpiry,
                 IsVerified = entity.IsVerified
             };
         }

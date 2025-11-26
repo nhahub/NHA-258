@@ -12,5 +12,4 @@ namespace SmartTransportation.BLL.DTOs.Profile
         public bool IsDriverVerified { get; set; }
     }
 
-
 }

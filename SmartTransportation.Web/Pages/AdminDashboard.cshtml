@@ -6,65 +6,22 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/admin_dashboard_css.css" />
-    <style>
-        /* ✅ FIXED: Loading spinner animation */
-        /* Loading overlay styles */
-        #dashboard-loader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.9);
-            z-index: 9998;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-    </style>
+    <link rel="stylesheet" href="~/css/AdminDashboard.css" />
 }
-<!-- Loading Overlay -->
-<div id="dashboard-loader" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); z-index: 9998; align-items: center; justify-content: center;">
-    <div style="text-align: center;">
-        <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-        <p style="margin-top: 16px; color: #666;">Loading dashboard data...</p>
-    </div>
-</div>
-
 
 <div class="admin-container">
     <!-- Admin Header -->
     <div class="admin-header">
         <h1>Admin Dashboard</h1>
         <p style="opacity: 0.9; margin-top: 8px;">Welcome back, Admin! Here's your system overview</p>
-        <button class="refresh-btn" style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: var(--primary-600); color: white; border: none; border-radius: 6px; cursor: pointer;">
-            🔄 Refresh
-        </button>
     </div>
-
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-warning" style="padding: 16px; background: #fef3c7; border-left: 4px solid #f59e0b; margin-bottom: 24px; border-radius: 8px;">
-            ⚠️ @TempData["ErrorMessage"]
-        </div>
-    }
 
     <!-- Statistics Overview -->
     <div class="stats-overview">
         <div class="stat-box users">
-            <div class="stat-value">0</div>
-            <div class="stat-label">Total Drivers</div>
-            <div class="stat-change positive">↑ 0 this month</div>
+            <div class="stat-value">@Model.TotalUsers</div>
+            <div class="stat-label">Total Users</div>
+            <div class="stat-change positive">↑ @Model.NewUsersThisMonth this month</div>
         </div>
         <div class="stat-box trips">
             <div class="stat-value">@Model.TotalTrips</div>
@@ -72,9 +29,9 @@
             <div class="stat-change positive">↑ @Model.ActiveTrips active</div>
         </div>
         <div class="stat-box routes">
-            <div class="stat-value">0</div>
-            <div class="stat-label">Total Vehicles</div>
-            <div class="stat-change">0 verified</div>
+            <div class="stat-value">@Model.TotalRoutes</div>
+            <div class="stat-label">Total Routes</div>
+            <div class="stat-change">@Model.RouteSegments segments</div>
         </div>
         <div class="stat-box revenue">
             <div class="stat-value">@Model.TotalRevenue.ToString("N0") EGP</div>
@@ -87,14 +44,14 @@
     <div class="quick-actions">
         <div class="quick-action-card" onclick="showTab('users')">
             <div class="quick-action-icon">👥</div>
-            <h3>Manage Drivers</h3>
+            <h3>Manage Users</h3>
         </div>
         <div class="quick-action-card" onclick="showTab('routes')">
-            <div class="quick-action-icon">🚗</div>
-            <h3>Manage Vehicles</h3>
+            <div class="quick-action-icon">🗺️</div>
+            <h3>Manage Routes</h3>
         </div>
         <div class="quick-action-card" onclick="showTab('trips')">
-            <div class="quick-action-icon">🗺️</div>
+            <div class="quick-action-icon">🚗</div>
             <h3>View Trips</h3>
         </div>
         <div class="quick-action-card" onclick="showTab('reports')">
@@ -106,75 +63,99 @@
     <!-- Main Content Tabs -->
     <div class="content-tabs">
         <div class="tabs-header">
-            <button class="tab-btn active" onclick="showTab('users')">Drivers Management</button>
-            <button class="tab-btn" onclick="showTab('routes')">Vehicles Management</button>
+            <button class="tab-btn active" onclick="showTab('users')">Users Management</button>
+            <button class="tab-btn" onclick="showTab('routes')">Routes Management</button>
             <button class="tab-btn" onclick="showTab('trips')">Trips Overview</button>
             <button class="tab-btn" onclick="showTab('reports')">Reports</button>
         </div>
 
-        <!-- Drivers Tab -->
+        <!-- Users Tab -->
         <div class="tab-content active" id="users-tab">
-            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="text" class="search-box" placeholder="Search drivers by name, phone..." style="flex: 1;" />
-                <button class="filter-btn" onclick="adminDashboard.loadDashboardData()" style="padding: 10px 20px; background: var(--primary-600); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    🔄 Reload
-                </button>
-            </div>
-
+            <input type="text" class="search-box" placeholder="Search users..." />
+            <button class="add-new-btn">+ Add New User</button>
+            
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>#</th>
-                            <th>Full Name</th>
-                            <th>Phone</th>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
                             <th>Role</th>
-                            <th>Verification Status</th>
-                            <th>Joined Date</th>
-                            <th>Rating</th>
+                            <th>Status</th>
+                            <th>Joined</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gray-500);">
-                                Loading drivers...
-                            </td>
-                        </tr>
+                        @foreach (var user in Model.Users)
+                        {
+                            <tr>
+                                <td>@user.UserId</td>
+                                <td>@user.FullName</td>
+                                <td>@user.Email</td>
+                                <td>@user.Role</td>
+                                <td>
+                                    <span class="status-badge status-@(user.IsActive ? "active" : "inactive")">
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>@user.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon btn-view">View</button>
+                                        <button class="btn-icon btn-edit">Edit</button>
+                                        <button class="btn-icon btn-delete">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Vehicles Tab -->
+        <!-- Routes Tab -->
         <div class="tab-content" id="routes-tab">
-            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
-                <input type="text" class="search-box" placeholder="Search vehicles by make, model, plate..." style="flex: 1;" />
-                <button class="filter-btn" onclick="adminDashboard.loadDashboardData()" style="padding: 10px 20px; background: var(--primary-600); color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    🔄 Reload
-                </button>
-            </div>
-
+            <input type="text" class="search-box" placeholder="Search routes..." />
+            <button class="add-new-btn">+ Create New Route</button>
+            
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Vehicle ID</th>
-                            <th>Make</th>
-                            <th>Model</th>
-                            <th>Year</th>
-                            <th>Plate Number</th>
-                            <th>Color</th>
+                            <th>Route ID</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Distance</th>
+                            <th>Duration</th>
+                            <th>Segments</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gray-500);">
-                                Loading vehicles...
-                            </td>
-                        </tr>
+                        @foreach (var route in Model.Routes)
+                        {
+                            <tr>
+                                <td>@route.RouteId</td>
+                                <td>@route.FromLocation</td>
+                                <td>@route.ToLocation</td>
+                                <td>@route.Distance km</td>
+                                <td>@route.EstimatedDuration</td>
+                                <td>@route.TotalSegments</td>
+                                <td>
+                                    <span class="status-badge status-active">Active</span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon btn-view">View</button>
+                                        <button class="btn-icon btn-edit">Edit</button>
+                                        <button class="btn-icon btn-delete">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
@@ -183,20 +164,50 @@
         <!-- Trips Tab -->
         <div class="tab-content" id="trips-tab">
             <input type="text" class="search-box" placeholder="Search trips..." />
-
+            
             <div class="table-container">
-                <div style="text-align: center; padding: 60px; color: var(--gray-500);">
-                    <div style="font-size: 48px; margin-bottom: 16px;">🚗</div>
-                    <h3 style="margin-bottom: 8px;">Trips Management Coming Soon</h3>
-                    <p>Trip tracking and management features will be available in the next update.</p>
-                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Trip ID</th>
+                            <th>Route</th>
+                            <th>Driver</th>
+                            <th>Date</th>
+                            <th>Passengers</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var trip in Model.Trips)
+                        {
+                            <tr>
+                                <td>@trip.TripId</td>
+                                <td>@trip.FromLocation → @trip.ToLocation</td>
+                                <td>@trip.DriverName</td>
+                                <td>@trip.DepartureDate.ToString("MMM dd")</td>
+                                <td>@trip.CurrentPassengers/@trip.MaxPassengers</td>
+                                <td>@trip.Price EGP</td>
+                                <td>
+                                    <span class="status-badge status-@trip.Status.ToLower()">@trip.Status</span>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <button class="btn-icon btn-view">View</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <!-- Reports Tab -->
         <div class="tab-content" id="reports-tab">
             <h2 style="margin-bottom: 24px;">System Reports & Analytics</h2>
-
+            
             <div class="chart-container">
                 <h3>Monthly Revenue</h3>
                 <p style="color: var(--gray-600); margin-top: 8px;">Revenue trends over the last 6 months</p>
@@ -206,7 +217,7 @@
                 </div>
             </div>
 
-            <div class="stats-overview" style="margin-top: 32px;">
+            <div class="stats-overview">
                 <div class="stat-box">
                     <div class="stat-value">@Model.TotalBookings</div>
                     <div class="stat-label">Total Bookings</div>
@@ -220,7 +231,7 @@
                     <div class="stat-label">Average Rating</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value">0</div>
+                    <div class="stat-value">@Model.ActiveDrivers</div>
                     <div class="stat-label">Active Drivers</div>
                 </div>
             </div>
@@ -229,33 +240,19 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/admin-dashboard.js"></script>
-    <script>
-        function showTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+<script>
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
 
-            // Show selected tab
-            const selectedTab = document.getElementById(tabName + '-tab');
-            if (selectedTab) {
-                selectedTab.classList.add('active');
-            }
-
-            // Activate the button
-            const buttons = document.querySelectorAll('.tab-btn');
-            buttons.forEach((btn, index) => {
-                if ((tabName === 'users' && index === 0) ||
-                    (tabName === 'routes' && index === 1) ||
-                    (tabName === 'trips' && index === 2) ||
-                    (tabName === 'reports' && index === 3)) {
-                    btn.classList.add('active');
-                }
-            });
-        }
-    </script>
+        // Show selected tab
+        document.getElementById(tabName + '-tab').classList.add('active');
+        event.target.classList.add('active');
+    }
+</script>
 }

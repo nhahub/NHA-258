@@ -123,10 +123,7 @@ namespace SmartTransportation.BLL.Services
                 Gender = dto.Gender,
                 ProfilePhotoUrl = dto.ProfilePhotoUrl,
                 DriverLicenseNumber = dto.DriverLicenseNumber,
-                // ✅ Convert DateTime? from DTO to DateOnly? for entity
-    //            DriverLicenseExpiry = dto.DriverLicenseExpiry.HasValue
-    //? (DateOnly?)DateOnly.FromDateTime(dto.DriverLicenseExpiry.Value)
-    //: null,
+                DriverLicenseExpiry = dto.DriverLicenseExpiry,
                 IsDriver = true,
                 IsDriverVerified = false,
                 CreatedAt = DateTime.UtcNow
@@ -194,13 +191,7 @@ namespace SmartTransportation.BLL.Services
             entity.Gender = dto.Gender ?? entity.Gender;
             entity.ProfilePhotoUrl = dto.ProfilePhotoUrl ?? entity.ProfilePhotoUrl;
             entity.DriverLicenseNumber = dto.DriverLicenseNumber ?? entity.DriverLicenseNumber;
-            
-            // ✅ Convert DateTime? from DTO to DateOnly? for entity when updating
-            if (dto.DriverLicenseExpiry.HasValue)
-            {
-                entity.DriverLicenseExpiry = DateOnly.FromDateTime(dto.DriverLicenseExpiry.Value);
-            }
-            
+            entity.DriverLicenseExpiry = dto.DriverLicenseExpiry ?? entity.DriverLicenseExpiry;
             entity.UpdatedAt = DateTime.UtcNow;
 
             _unitOfWork.UserProfiles.Update(entity);
@@ -231,7 +222,7 @@ namespace SmartTransportation.BLL.Services
         {
             return new DriverProfileDTO
             {
-                UserId = entity.UserId,
+                //UserId = entity.UserId,
                 FullName = entity.FullName,
                 Phone = entity.Phone,
                 Address = entity.Address,
@@ -241,14 +232,8 @@ namespace SmartTransportation.BLL.Services
                 Gender = entity.Gender,
                 ProfilePhotoUrl = entity.ProfilePhotoUrl,
                 DriverLicenseNumber = entity.DriverLicenseNumber,
-                // ✅ Convert DateOnly? from entity to DateTime? for DTO
-                DriverLicenseExpiry = entity.DriverLicenseExpiry.HasValue 
-                    ? entity.DriverLicenseExpiry.Value.ToDateTime(TimeOnly.MinValue) 
-                    : null,
-                // ✅ Convert decimal? to double?
-                DriverRating = entity.DriverRating.HasValue 
-                    ? (double?)entity.DriverRating.Value 
-                    : null,
+                DriverLicenseExpiry = entity.DriverLicenseExpiry,
+                DriverRating = entity.DriverRating,
                 IsDriverVerified = entity.IsDriverVerified,
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt
@@ -268,10 +253,7 @@ namespace SmartTransportation.BLL.Services
                 Color = entity.Color,
                 SeatsCount = entity.SeatsCount,
                 VehicleLicenseNumber = entity.VehicleLicenseNumber,
-                // ✅ Convert DateOnly? to DateTime?
-                VehicleLicenseExpiry = entity.VehicleLicenseExpiry.HasValue 
-                    ? entity.VehicleLicenseExpiry.Value.ToDateTime(TimeOnly.MinValue) 
-                    : null,
+                VehicleLicenseExpiry = entity.VehicleLicenseExpiry,
                 IsVerified = entity.IsVerified
             };
         }
