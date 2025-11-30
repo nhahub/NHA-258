@@ -108,7 +108,7 @@ public class Log_InModel : PageModel
             {
                 2 => "/Driver_Profile",     // Driver
                 3 => "/customer-profile",   // Passenger
-                1 => "/AdminDashboard",     // Admin
+                1 => "Admin2/Admin2",     // Admin
                 _ => "/Index"
             });
         }

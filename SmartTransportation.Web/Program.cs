@@ -33,6 +33,7 @@ builder.Services.AddScoped<IDriverService, DriverService>();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserProfileService, PassengerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 // ✅ Register StripePaymentService so it can be injected into Razor Pages
 builder.Services.AddScoped<StripePaymentService>();
 

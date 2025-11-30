@@ -1,0 +1,222 @@
+﻿@page
+@model SmartTransportation.Web.Pages.Admin.Admin2Model
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    ViewData["Title"] = "Driver Management";
+}
+
+<div class="container-fluid py-4" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" style="font-weight: bold; color: #374151;">Driver Management</h2>
+            <small style="color: #6b7280;">Review and manage drivers and their vehicles</small>
+        </div>
+    </div>
+
+    <form method="post">
+        <input name="__RequestVerificationToken" type="hidden"
+               value='@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken' />
+    </form>
+
+    <div class="card" style="background-color: #fefefe; border-radius: 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border:none;">
+        <div class="card-body pt-3">
+            <div class="table-responsive" style="overflow-x:auto;">
+                <table class="table table-borderless table-hover" style="width:100%; border-collapse: separate; border-spacing: 0 0.75rem;">
+                    <thead>
+                        <tr style="background: #e5e7eb; color: #374151; font-weight:600; letter-spacing:0.5px;">
+                            <th style="padding:0.8rem 1rem;">Name</th>
+                            <th style="padding:0.8rem 1rem;">Phone</th>
+                            <th style="padding:0.8rem 1rem;">City</th>
+                            <th style="padding:0.8rem 1rem;">Rating</th>
+                            <th style="padding:0.8rem 1rem; text-align:center;">Status</th>
+                            <th class="text-end" style="padding:0.8rem 1rem;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Drivers != null && Model.Drivers.Any())
+                        {
+                            foreach (var driver in Model.Drivers)
+                            {
+                                <tr id="driver-row-@driver.DriverId" style="background: #ffffff; border-radius:0.75rem; box-shadow:0 2px 6px rgba(0,0,0,0.03); transition: transform 0.2s;">
+                                    <td style="font-weight:600; padding:0.75rem 1rem;">@driver.Driver.FullName</td>
+                                    <td style="color:#6b7280; padding:0.75rem 1rem;">@driver.Driver.Phone</td>
+                                    <td style="padding:0.75rem 1rem;">@driver.Driver.City</td>
+                                    <td style="padding:0.75rem 1rem;">
+                                        <span style="display:inline-block; font-weight:600; padding:0.35em 0.65em; border-radius:0.5rem; font-size:0.85rem; background: linear-gradient(135deg,#d1fae5,#a7f3d0); color:#065f46;">@driver.Driver.DriverRating</span>
+                                    </td>
+                                    <td id="driver-verified-@driver.DriverId" style="text-align:center; padding:0.75rem 1rem;">
+                                        @if (driver.Driver.IsDriverVerified)
+                                        {
+                                            <span style="color:#10b981; font-size:1.1rem; font-weight:600;">✔ Active (Verified)</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:#ef4444; font-size:1.1rem; font-weight:600;">✖ Inactive (Not verified)</span>
+                                        }
+                                    </td>
+                                    <td class="text-end" style="padding:0.75rem 1rem;">
+                                        <div class="btn-group" role="group" style="display:flex; gap:0.3rem;">
+                                            <button type="button" onclick="verifyDriver(@driver.DriverId,true)" class="btn-verify-driver" style="border:none; border-radius:0.5rem; padding:0.4rem 0.7rem; font-size:0.85rem; background:#10b981; color:#fff;">✔</button>
+                                            <button type="button" onclick="verifyDriver(@driver.DriverId,false)" class="btn-reject-driver" style="border:none; border-radius:0.5rem; padding:0.4rem 0.7rem; font-size:0.85rem; background:#ef4444; color:#fff;">✖</button>
+                                            <button type="button" onclick="toggleVehicles(@driver.DriverId)" style="border:none; border-radius:0.5rem; padding:0.4rem 0.7rem; font-size:0.85rem; background:#3b82f6; color:#fff;">🚚</button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <tr id="vehicles-@driver.DriverId" style="display:none;">
+                                    <td colspan="6" style="padding:0;">
+                                        <div style="padding:0.75rem 1rem; background:#f9fafb; border-radius:0.75rem; margin-top:0.25rem;">
+                                            <h6 style="color:#6b7280; margin-bottom:0.5rem; font-weight:500;">@driver.Driver.FullName's Vehicles</h6>
+                                            <div class="table-responsive" style="overflow-x:auto;">
+                                                <table class="table table-sm table-borderless mb-0 align-middle" style="width:100%; border-collapse: separate; border-spacing:0 0.25rem;">
+                                                    <thead>
+                                                        <tr style="background: #e5e7eb; color:#374151; font-weight:600;">
+                                                            <th style="padding:0.6rem 0.8rem;">Make</th>
+                                                            <th style="padding:0.6rem 0.8rem;">Model</th>
+                                                            <th style="padding:0.6rem 0.8rem;">Year</th>
+                                                            <th style="padding:0.6rem 0.8rem;">Plate</th>
+                                                            <th style="padding:0.6rem 0.8rem; text-align:center;">Verified</th>
+                                                            <th class="text-end" style="padding:0.6rem 0.8rem;">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="vehicle-body-@driver.DriverId">
+                                                        @if (driver.Vehicles != null && driver.Vehicles.Any())
+                                                        {
+                                                            foreach (var v in driver.Vehicles)
+                                                            {
+                                                                var isDriverVerified = driver.Driver.IsDriverVerified;
+                                                                <tr>
+                                                                    <td style="padding:0.5rem 0.8rem;">@v.VehicleMake</td>
+                                                                    <td style="padding:0.5rem 0.8rem;">@v.VehicleModel</td>
+                                                                    <td style="padding:0.5rem 0.8rem;">@v.VehicleYear</td>
+                                                                    <td style="font-weight:600; padding:0.5rem 0.8rem;">@v.PlateNumber</td>
+                                                                    <td id="vehicle-verified-@v.VehicleId" data-prev-verified="@v.IsVerified.ToString().ToLower()" style="text-align:center; padding:0.5rem 0.8rem;">
+                                                                        @if (v.IsVerified)
+                                                                        {
+                                                                            <span style="color:#10b981; font-size:1.1rem;">✔</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span style="color:#ef4444; font-size:1.1rem;">✖</span>
+                                                                        }
+                                                                    </td>
+                                                                    <td class="text-end" style="padding:0.5rem 0.8rem;">
+                                                                        <div class="btn-group" style="display:flex; gap:0.25rem;">
+                                                                            <button type="button"
+                                                                                    onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,true)"
+                                                                                    class="btn-verify-vehicle @(isDriverVerified ? "" : "disabled")"
+                                                                                    style="border:none; border-radius:0.5rem; padding:0.3rem 0.6rem; background:#10b981; color:#fff; @(isDriverVerified ? "" : "opacity:0.5; cursor:not-allowed;")"
+                                                                                    @(isDriverVerified ? "" : "title='Driver must be verified first' disabled")>
+                                                                                ✔
+                                                                            </button>
+                                                                            <button type="button"
+                                                                                    onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,false)"
+                                                                                    class="btn-reject-vehicle @(isDriverVerified ? "" : "disabled")"
+                                                                                    style="border:none; border-radius:0.5rem; padding:0.3rem 0.6rem; background:#ef4444; color:#fff; @(isDriverVerified ? "" : "opacity:0.5; cursor:not-allowed;")"
+                                                                                    @(isDriverVerified ? "" : "title='Driver must be verified first' disabled")>
+                                                                                ✖
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <tr>
+                                                                <td colspan="6" style="text-align:center; color:#6b7280; padding:1rem;">No vehicles</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" style="text-align:center; color:#6b7280; padding:2rem;">No drivers found</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function getAntiForgeryToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]').value;
+        }
+
+        async function verifyDriver(driverId, isVerified) {
+            try {
+                const res = await fetch(`?handler=VerifyDriver&driverId=${driverId}&isVerified=${isVerified}`, {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': getAntiForgeryToken() }
+                });
+                const data = await res.json();
+                alert(data.message);
+
+                const verifiedCell = document.getElementById(`driver-verified-${driverId}`);
+                verifiedCell.innerHTML = isVerified
+                    ? '<span style="color:#10b981; font-size:1.1rem; font-weight:600;">✔ Active (Verified)</span>'
+                    : '<span style="color:#ef4444; font-size:1.1rem; font-weight:600;">✖ Inactive (Not verified)</span>';
+
+                const vehicleButtons = document.querySelectorAll(`#vehicle-body-${driverId} button`);
+                vehicleButtons.forEach(btn => {
+                    btn.disabled = !isVerified;
+                    btn.style.opacity = isVerified ? '1' : '0.5';
+                    btn.style.cursor = isVerified ? 'pointer' : 'not-allowed';
+                    if (!isVerified) btn.title = 'Driver must be verified first';
+                    else btn.removeAttribute('title');
+                });
+
+                if (!isVerified) {
+                    const vehicleCells = document.querySelectorAll(`#vehicle-body-${driverId} td[id^="vehicle-verified-"]`);
+                    vehicleCells.forEach(td => td.innerHTML = '<span style="color:#ef4444; font-size:1.1rem;">✖</span>');
+                }
+            } catch (e) {
+                console.error(e);
+                alert("An error occurred. Please try again.");
+            }
+        }
+
+        async function verifyVehicle(driverId, vehicleId, isVerified) {
+            const driverVerifiedText = document.getElementById(`driver-verified-${driverId}`).innerText.trim();
+            if (!driverVerifiedText.includes("✔") && isVerified) {
+                alert("Driver must be verified first before verifying vehicles.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`?handler=VerifyVehicle&driverId=${driverId}&vehicleId=${vehicleId}&isVerified=${isVerified}`, {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': getAntiForgeryToken() }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    const cell = document.getElementById(`vehicle-verified-${vehicleId}`);
+                    cell.innerHTML = isVerified
+                        ? '<span style="color:#10b981; font-size:1.1rem;">✔</span>'
+                        : '<span style="color:#ef4444; font-size:1.1rem;">✖</span>';
+                }
+                alert(data.message);
+            } catch (e) {
+                console.error(e);
+                alert("An error occurred. Please try again.");
+            }
+        }
+
+        function toggleVehicles(driverId) {
+            const row = document.getElementById(`vehicles-${driverId}`);
+            row.style.display = row.style.display === 'none' || row.style.display === '' ? 'table-row' : 'none';
+        }
+    </script>
+}

@@ -50,8 +50,7 @@ namespace SmartTransportation.BLL.Services
         public async Task<IEnumerable<VehicleDTO>> GetVehiclesByDriverAsync(int driverId)
         {
             var driver = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
-            if (driver == null)
-                throw new Exception("Driver not found");
+            if (driver == null) return Enumerable.Empty<VehicleDTO>();
 
             var vehicles = await _unitOfWork.Vehicles
                 .GetQueryable()
@@ -67,8 +66,10 @@ namespace SmartTransportation.BLL.Services
             if (vehicle == null) return false;
 
             var driver = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
-            if (driver == null || !driver.IsDriverVerified)
-                return false; // driver not verified
+            if (driver == null) return false;
+
+            // Only block verification if driver is unverified, allow rejection
+            if (isVerified && !driver.IsDriverVerified) return false;
 
             vehicle.IsVerified = isVerified;
             _unitOfWork.Vehicles.Update(vehicle);
@@ -88,7 +89,7 @@ namespace SmartTransportation.BLL.Services
         }
 
         // -------------------------------
-        // Admin profile
+        // Admin profile management
         // -------------------------------
         public async Task<BaseUserProfileDTO> CreateAdminProfileAsync(CreateUserProfileDTO dto, int adminId)
         {
