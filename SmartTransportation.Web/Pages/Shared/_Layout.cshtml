@@ -21,21 +21,26 @@
             </a>
 
             <nav class="nav-links">
-                <a href="#features">Features</a>
-                <a asp-page="/SearchTrip">Trips</a>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     @if (userRole == "Admin")
                     {
-                        <a asp-page="/AdminDashboard">Dashboard</a>
+                        <a asp-page="/Index">Features</a>
+                        <a asp-page="/Admin2/Admin2">Dashboard</a>
                     }
                     else if (userRole == "Passenger")
                     {
-                        <a asp-page="/customer-profile">Dashboard</a>
+                        <a asp-page="/Index">Features</a>
+                        <a asp-page="/SearchTrip">Find Trip</a>
+                        <a asp-page="/customer-profile">Profile</a>
+
                     }
                     else if (userRole == "Driver")
                     {
+                        <a asp-page="/Trips/Create">Create Trip</a>  
+                        <a asp-page="/Driver_Proile">Profile</a>
                         <a asp-page="/DriverDashboard">Dashboard</a>
+
                     }
                 }
             </nav>
@@ -46,7 +51,9 @@
                     <!-- Logged In User -->
                     <span class="user-greeting">Hello, @User.Identity.Name</span>
                     <form method="post" asp-page="/Logout" style="display: inline;" id="logoutForm">
+
                         <button type="submit" class="btn btn-primary" id="logoutBtn">Logout</button>
+
                     </form>
                 }
                 else

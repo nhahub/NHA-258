@@ -4,10 +4,8 @@
     ViewData["Title"] = "Driver Profile - Move Smart";
     Layout = "_Layout";
 }
-
 @section Style {
     <link rel="stylesheet" href="~/css/customer_profile_css.css" />
-
 }
 <body>
     <div class="container">
@@ -18,7 +16,6 @@
                 <p>@Model.Phone</p>
             </div>
         </div>
-
         @if (!string.IsNullOrEmpty(Model.SuccessMessage))
         {
             <div class="success-message">@Model.SuccessMessage</div>
@@ -27,19 +24,24 @@
         {
             <div class="error-message">@Model.ErrorMessage</div>
         }
-
-        <div class="profile-grid">
+        <div class="content-wrapper">
             <!-- Personal Info -->
             <div class="profile-card">
                 <h2>Personal Information</h2>
                 <form method="post">
-                    <div class="form-group"><label>Full Name</label><input asp-for="FullName" type="text" /></div>
-                    <div class="form-group"><label>Phone</label><input asp-for="Phone" type="tel" /></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Full Name</label><input asp-for="FullName" type="text" /></div>
+                        <div class="form-group"><label>Phone</label><input asp-for="Phone" type="tel" /></div>
+                    </div>
                     <div class="form-group"><label>Address</label><input asp-for="Address" type="text" /></div>
-                    <div class="form-group"><label>City</label><input asp-for="City" type="text" /></div>
-                    <div class="form-group"><label>Country</label><input asp-for="Country" type="text" /></div>
-                    <div class="form-group"><label>Date of Birth</label><input asp-for="DateOfBirth" type="date" /></div>
-                    <div class="form-group"><label>Gender</label><input asp-for="Gender" type="text" /></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>City</label><input asp-for="City" type="text" /></div>
+                        <div class="form-group"><label>Country</label><input asp-for="Country" type="text" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Date of Birth</label><input asp-for="DateOfBirth" type="date" /></div>
+                        <div class="form-group"><label>Gender</label><input asp-for="Gender" type="text" /></div>
+                    </div>
                     <button type="submit" class="btn">Update Profile</button>
                 </form>
             </div>
@@ -51,8 +53,16 @@
                 <p>Upcoming Bookings: @Model.UpcomingBookings</p>
                 <p>Completed Bookings: @Model.CompletedBookings</p>
             </div>
-            <a asp-page="/SearchTrip" class="btn btn-primary">🔍 Search Trip</a>
 
+            <!-- Search Trip CTA -->
+            <aside class="cta-section">
+                <div class="cta-card">
+                    <span class="cta-icon">🚗</span>
+                    <h3>Ready to Travel?</h3>
+                    <p>Find your perfect trip and book your ride in just a few clicks</p>
+                    <a asp-page="/SearchTrip" class="btn-primary">🔍 Search Trip</a>
+                </div>
+            </aside>
         </div>
     </div>
 </body>

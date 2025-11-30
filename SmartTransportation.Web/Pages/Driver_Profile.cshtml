@@ -1,14 +1,12 @@
-@page
+﻿@page
 @model SmartTransportation.Web.Pages.Driver_ProfileModel
 @{
     ViewData["Title"] = "Driver Profile - Move Smart";
     Layout = "_Layout";
 }
-
-@section style{
+@section style {
     <link rel="stylesheet" href="~/css/driver_profile_css.css" />
 }
-        
 
 <body>
     <div class="container">
@@ -34,15 +32,23 @@
             <div class="profile-card">
                 <h2>Personal Information</h2>
                 <form method="post" asp-page-handler="UpdateDriver">
-                    <div class="form-group"><label>Full Name</label><input asp-for="DriverDto.FullName" type="text" required /></div>
-                    <div class="form-group"><label>Phone</label><input asp-for="DriverDto.Phone" type="tel" required /></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Full Name</label><input asp-for="DriverDto.FullName" type="text" required /></div>
+                        <div class="form-group"><label>Phone</label><input asp-for="DriverDto.Phone" type="tel" required /></div>
+                    </div>
                     <div class="form-group"><label>Address</label><input asp-for="DriverDto.Address" type="text" /></div>
-                    <div class="form-group"><label>City</label><input asp-for="DriverDto.City" type="text" /></div>
-                    <div class="form-group"><label>Country</label><input asp-for="DriverDto.Country" type="text" /></div>
-                    <div class="form-group"><label>Date of Birth</label><input asp-for="DriverDto.DateOfBirth" type="date" /></div>
-                    <div class="form-group"><label>Gender</label><input asp-for="DriverDto.Gender" type="text" /></div>
-                    <div class="form-group"><label>Driver License Number</label><input asp-for="DriverDto.DriverLicenseNumber" type="text" /></div>
-                    <div class="form-group"><label>Driver License Expiry</label><input asp-for="DriverDto.DriverLicenseExpiry" type="date" /></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>City</label><input asp-for="DriverDto.City" type="text" /></div>
+                        <div class="form-group"><label>Country</label><input asp-for="DriverDto.Country" type="text" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Date of Birth</label><input asp-for="DriverDto.DateOfBirth" type="date" /></div>
+                        <div class="form-group"><label>Gender</label><input asp-for="DriverDto.Gender" type="text" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>License Number</label><input asp-for="DriverDto.DriverLicenseNumber" type="text" /></div>
+                        <div class="form-group"><label>License Expiry</label><input asp-for="DriverDto.DriverLicenseExpiry" type="date" /></div>
+                    </div>
                     <button type="submit" class="btn">Update Profile</button>
                 </form>
             </div>
@@ -51,20 +57,32 @@
             <div class="profile-card">
                 <h2>Vehicle Information</h2>
                 <form method="post" asp-page-handler="UpdateVehicle">
-                    <div class="form-group"><label>Make</label><input asp-for="VehicleDto.VehicleMake" /></div>
-                    <div class="form-group"><label>Model</label><input asp-for="VehicleDto.VehicleModel" /></div>
-                    <div class="form-group"><label>Year</label><input asp-for="VehicleDto.VehicleYear" type="number" /></div>
-                    <div class="form-group"><label>Plate Number</label><input asp-for="VehicleDto.PlateNumber" /></div>
-                    <div class="form-group"><label>Color</label><input asp-for="VehicleDto.Color" /></div>
-                    <div class="form-group"><label>Seats Count</label><input asp-for="VehicleDto.SeatsCount" type="number" /></div>
-                    <div class="form-group"><label>Vehicle License Number</label><input asp-for="VehicleDto.VehicleLicenseNumber" /></div>
-                    <div class="form-group"><label>Vehicle License Expiry</label><input asp-for="VehicleDto.VehicleLicenseExpiry" type="date" /></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Make</label><input asp-for="VehicleDto.VehicleMake" /></div>
+                        <div class="form-group"><label>Model</label><input asp-for="VehicleDto.VehicleModel" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Year</label><input asp-for="VehicleDto.VehicleYear" type="number" /></div>
+                        <div class="form-group"><label>Color</label><input asp-for="VehicleDto.Color" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Plate Number</label><input asp-for="VehicleDto.PlateNumber" /></div>
+                        <div class="form-group"><label>Seats Count</label><input asp-for="VehicleDto.SeatsCount" type="number" /></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>License Number</label><input asp-for="VehicleDto.VehicleLicenseNumber" /></div>
+                        <div class="form-group"><label>License Expiry</label><input asp-for="VehicleDto.VehicleLicenseExpiry" type="date" /></div>
+                    </div>
                     <button type="submit" class="btn">Update Vehicle</button>
                 </form>
             </div>
 
-            <div style="margin-top: 20px;">
-                <a href="/Trips/Create" class="btn">Create New Trip</a>
+            <!-- Create Trip CTA Card -->
+            <div class="cta-card">
+                <span class="cta-icon">🚗</span>
+                <h3>Create a New Trip</h3>
+                <p>Start offering rides to passengers. Set your route, schedule, and pricing.</p>
+                <a href="/Trips/Create" class="btn">➕ Create New Trip</a>
             </div>
         </div>
     </div>
