@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using SmartTransportation.BLL.Gateways;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.BLL.Services;
 using SmartTransportation.DAL.Models;
@@ -34,6 +35,10 @@ builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IUserProfileService, PassengerService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IRouteService, RouteService>();
+builder.Services.AddScoped<IGoogleMapsGateway, GoogleMapsGateway>();
+builder.Services.AddScoped<IOpenWeatherGateway, OpenWeatherGateway>();
+
 // ✅ Register StripePaymentService so it can be injected into Razor Pages
 builder.Services.AddScoped<StripePaymentService>();
 

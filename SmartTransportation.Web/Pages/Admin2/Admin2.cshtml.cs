@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using SmartTransportation.BLL.DTOs.Profile;
+using SmartTransportation.BLL.DTOs.Route;
 using SmartTransportation.BLL.Interfaces;
 using SmartTransportation.DAL.Models;
 using SmartTransportation.DAL.Repositories.UnitOfWork;
@@ -17,13 +18,16 @@ namespace SmartTransportation.Web.Pages.Admin
     {
         private readonly IAdminService _adminService;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly IRouteService _routeService;
 
-        public Admin2Model(IAdminService adminService, IUnitOfWork unitOfWork)
+        public Admin2Model(IAdminService adminService, IUnitOfWork unitOfWork, IRouteService routeService)
         {
             _adminService = adminService;
             _unitOfWork = unitOfWork;
+            _routeService = routeService;
         }
 
+        // ================== DRIVERS ==================
         public class AdminDriverDTO
         {
             public int DriverId { get; set; }
@@ -33,6 +37,15 @@ namespace SmartTransportation.Web.Pages.Admin
 
         public List<AdminDriverDTO> Drivers { get; set; } = new();
 
+        // ================== ROUTES ==================
+        // Bound property for create form
+        [BindProperty]
+        public CreateRouteDTO NewRoute { get; set; } = new();
+
+        // List of routes (loaded on GET)
+        public List<RouteDetailsDTO> Routes { get; set; } = new();
+
+        // On GET: load drivers + routes
         public async Task<IActionResult> OnGetAsync(bool? onlyVerified = null)
         {
             Drivers = new List<AdminDriverDTO>();
@@ -55,9 +68,80 @@ namespace SmartTransportation.Web.Pages.Admin
                 });
             }
 
+            // Load routes (including segments) for display
+            var allRoutes = await _routeService.GetAllRoutesAsync();
+            Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
+
             return Page();
         }
 
+        // Handler to create route (form POST)
+        public async Task<IActionResult> OnPostAddRouteAsync()
+        {
+            // Server-side validation: ensure required fields
+            if (string.IsNullOrWhiteSpace(NewRoute.RouteName)
+                || string.IsNullOrWhiteSpace(NewRoute.StartLocation)
+                || string.IsNullOrWhiteSpace(NewRoute.EndLocation))
+            {
+                ModelState.AddModelError(string.Empty, "Route Name, Start Location and End Location are required.");
+            }
+
+            // Remove empty segments from model (if any)
+            if (NewRoute.Segments != null && NewRoute.Segments.Any())
+            {
+                NewRoute.Segments = NewRoute.Segments
+                    .Where(s => !string.IsNullOrWhiteSpace(s.StartPoint) && !string.IsNullOrWhiteSpace(s.EndPoint))
+                    .Select((s, idx) =>
+                    {
+                        s.SegmentOrder = idx + 1;
+                        return s;
+                    })
+                    .ToList();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                // reload display lists and show errors
+                var allRoutes = await _routeService.GetAllRoutesAsync();
+                Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
+                // preserve NewRoute for user to fix
+                return Page();
+            }
+
+            // If segments were not provided, create a default single segment from Start->End
+            if (NewRoute.Segments == null || NewRoute.Segments.Count == 0)
+            {
+                NewRoute.Segments = new List<CreateSegmentDTO>
+                {
+                    new CreateSegmentDTO
+                    {
+                        SegmentOrder = 1,
+                        StartPoint = NewRoute.StartLocation,
+                        EndPoint = NewRoute.EndLocation,
+                        SegmentDistanceKm = 0,
+                        SegmentEstimatedMinutes = 0
+                    }
+                };
+            }
+
+            try
+            {
+                var created = await _routeService.CreateRouteAsync(NewRoute);
+                // Clear NewRoute after creation
+                NewRoute = new CreateRouteDTO();
+                // Redirect to GET to avoid repost
+                return RedirectToPage();
+            }
+            catch (System.Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Error adding route: {ex.Message}");
+                var allRoutes = await _routeService.GetAllRoutesAsync();
+                Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
+                return Page();
+            }
+        }
+
+        // ================== DRIVER / VEHICLE VERIFICATION (UNCHANGED) ==================
         public async Task<IActionResult> OnPostVerifyDriverAsync(int driverId, bool isVerified)
         {
             var ok = await _adminService.VerifyDriverAsync(driverId, isVerified);

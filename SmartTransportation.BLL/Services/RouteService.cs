@@ -25,9 +25,27 @@ namespace SmartTransportation.BLL.Services
             _weatherGateway = weatherGateway;
         }
 
+        //public async Task<IEnumerable<RouteDetailsDTO>> GetAllRoutesAsync()
+        //{
+        //    var routes = await _unitOfWork.Routes.GetAllAsync();
+        //    return routes.Select(r => new RouteDetailsDTO
+        //    {
+        //        RouteId = r.RouteId,
+        //        RouteName = r.RouteName,
+        //        StartLocation = r.StartLocation,
+        //        EndLocation = r.EndLocation,
+        //        RouteType = r.RouteType,
+        //        IsCircular = r.IsCircular,
+        //        CreatedAt = r.CreatedAt
+        //    });
+        //}
         public async Task<IEnumerable<RouteDetailsDTO>> GetAllRoutesAsync()
         {
             var routes = await _unitOfWork.Routes.GetAllAsync();
+
+            var allSegments = await _unitOfWork.RouteSegments.GetAllAsync();
+            var allLocations = await _unitOfWork.MapLocations.GetAllAsync();
+
             return routes.Select(r => new RouteDetailsDTO
             {
                 RouteId = r.RouteId,
@@ -36,9 +54,37 @@ namespace SmartTransportation.BLL.Services
                 EndLocation = r.EndLocation,
                 RouteType = r.RouteType,
                 IsCircular = r.IsCircular,
-                CreatedAt = r.CreatedAt
+                TotalDistanceKm = r.TotalDistanceKm,
+                EstimatedTimeMinutes = r.EstimatedTimeMinutes,
+                CreatedAt = r.CreatedAt,
+                Segments = allSegments
+                    .Where(s => s.RouteId == r.RouteId)
+                    .Select(s => new RouteSegmentDTO
+                    {
+                        SegmentId = s.SegmentId,
+                        RouteId = s.RouteId,
+                        SegmentOrder = s.SegmentOrder,
+                        StartPoint = s.StartPoint,
+                        EndPoint = s.EndPoint,
+                        DistanceKm = s.DistanceKm,
+                        EstimatedMinutes = s.EstimatedMinutes
+                    }).ToList(),
+                MapLocations = allLocations
+                    .Where(l => allSegments.Any(s => s.SegmentId == l.SegmentId && s.RouteId == r.RouteId))
+                    .Select(l => new MapLocationDTO
+                    {
+                        LocationId = l.LocationId,
+                        SegmentId = l.SegmentId,
+                        Latitude = l.Latitude,
+                        Longitude = l.Longitude,
+                        Description = l.Description,
+                        StopOrder = l.StopOrder,
+                        GoogleAddress = l.GoogleAddress,
+                        GooglePlaceId = l.GooglePlaceId
+                    }).ToList()
             });
         }
+
 
         public async Task<RouteDetailsDTO?> GetRouteDetailsByIdAsync(int routeId)
         {

@@ -8,6 +8,44 @@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin_dashboard_css.css" />
+    <style>
+        /* small helpers for route section */
+        .route-section {
+            margin-top: 48px;
+            border-top: 1px solid var(--gray-200);
+            padding-top: 24px;
+        }
+
+        .segment-row, .segment-block {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+            .segment-row input, .segment-block input {
+                padding: 6px;
+                border-radius: 4px;
+                border: 1px solid var(--gray-300);
+                min-width: 120px;
+            }
+
+        .segments-list {
+            margin-top: 12px;
+        }
+
+        .route-summary {
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        .error {
+            color: var(--danger-600);
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+    </style>
 }
 
 <div class="admin-container">
@@ -67,7 +105,7 @@
                                     </td>
                                 </tr>
 
-                                <tr id="vehicles-@driver.DriverId">
+                                <tr id="vehicles-@driver.DriverId" style="display:none;">
                                     <td colspan="6">
                                         <div>
                                             <h6>@driver.Driver.FullName's Vehicles</h6>
@@ -148,10 +186,137 @@
             </div>
         </div>
     </div>
+
+    <!-- ========================= -->
+    <!-- Route Management Section -->
+    <!-- ========================= -->
+    <div class="route-section">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2>Route Management</h2>
+                <p>Create routes with multiple segments and review existing routes</p>
+            </div>
+            <div>
+                <button class="btn btn-edit" onclick="toggleRouteForm()">+ Add Route</button>
+            </div>
+        </div>
+
+        <!-- ================== FIXED ADD ROUTE FORM ================== -->
+        <form method="post" asp-page-handler="AddRoute">
+            @Html.AntiForgeryToken()
+
+            <div id="route-form" style="display:none; margin-top:16px; background:var(--gray-50); padding:16px; border-radius:8px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <input asp-for="NewRoute.RouteName" placeholder="Route Name *" class="form-input" />
+                    <input asp-for="NewRoute.RouteType" placeholder="Route Type (optional)" class="form-input" />
+                    <input asp-for="NewRoute.StartLocation" placeholder="Start Location *" class="form-input" />
+                    <input asp-for="NewRoute.EndLocation" placeholder="End Location *" class="form-input" />
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="margin:0;"><input asp-for="NewRoute.IsCircular" type="checkbox" /> Circular Route</label>
+                    </div>
+                </div>
+
+                <h4 style="margin-top:12px;">Segments</h4>
+                <div id="segments-container" class="segments-list">
+                    @if (Model.NewRoute?.Segments != null && Model.NewRoute.Segments.Any())
+                    {
+                        for (int i = 0; i < Model.NewRoute.Segments.Count; i++)
+                        {
+                            <div class="segment-row">
+                                <input name="NewRoute.Segments[@i].StartPoint" value="@Model.NewRoute.Segments[i].StartPoint" placeholder="Start Point *" />
+                                <input name="NewRoute.Segments[@i].EndPoint" value="@Model.NewRoute.Segments[i].EndPoint" placeholder="End Point *" />
+                                <input name="NewRoute.Segments[@i].SegmentDistanceKm" value="@Model.NewRoute.Segments[i].SegmentDistanceKm" placeholder="Distance (km)" />
+                                <input name="NewRoute.Segments[@i].SegmentEstimatedMinutes" value="@Model.NewRoute.Segments[i].SegmentEstimatedMinutes" placeholder="Est. Minutes" />
+                                <button type="button" class="btn" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                    <button type="button" class="btn btn-add-segment" onclick="addSegment()">+ Add Segment</button>
+                    <button type="submit" class="btn btn-edit">Create Route</button>
+                    <button type="button" class="btn" onclick="toggleRouteForm()" style="background:var(--gray-300);">Cancel</button>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="error">Please fix the form errors above.</div>
+                }
+                @if (ViewData.ModelState.ErrorCount > 0)
+                {
+                    foreach (var m in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                    {
+                        <div class="error">@m.ErrorMessage</div>
+                    }
+                }
+            </div>
+        </form>
+
+        <!-- Routes List -->
+        <div style="margin-top:18px;">
+            @if (Model.Routes != null && Model.Routes.Any())
+            {
+                foreach (var route in Model.Routes)
+                {
+                    <div class="route-card" style="border:1px solid var(--gray-200); border-radius:8px; padding:12px; margin-bottom:12px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div class="route-summary">@route.RouteName (@(route.IsCircular ? "Circular" : "Linear"))</div>
+                                <div style="font-size:13px; color:var(--gray-600);">@route.StartLocation → @route.EndLocation</div>
+                                <div style="font-size:13px; color:var(--gray-600); margin-top:6px;">Total: @(route.TotalDistanceKm?.ToString("F1") ?? "0.0") km • @(route.EstimatedTimeMinutes ?? 0) min</div>
+                            </div>
+                            <div>
+                                <button class="btn btn-sm" onclick="toggleRouteDetails(@route.RouteId)">Details</button>
+                            </div>
+                        </div>
+
+                        <div id="route-details-@route.RouteId" style="display:none; margin-top:10px;">
+                            @if (route.Segments != null && route.Segments.Any())
+                            {
+                                <table class="data-table" style="width:100%; margin-top:8px;">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                            <th>Distance (km)</th>
+                                            <th>Est. Minutes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var seg in route.Segments.OrderBy(s => s.SegmentOrder))
+                                        {
+                                            <tr>
+                                                <td style="font-weight:600;">@seg.SegmentOrder</td>
+                                                <td>@seg.StartPoint</td>
+                                                <td>@seg.EndPoint</td>
+                                                <td>@(seg.DistanceKm?.ToString("F1") ?? "0.0")</td>
+                                                <td>@(seg.EstimatedMinutes ?? 0)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <div style="padding:12px; color:var(--gray-600);">No segments defined</div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div style="text-align:center; color: var(--gray-600); padding: 20px;">No routes found</div>
+            }
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <script>
+        // ================== DRIVER & VEHICLE SCRIPTS (UNCHANGED) ==================
         function getAntiForgeryToken() {
             return document.querySelector('input[name="__RequestVerificationToken"]').value;
         }
@@ -218,6 +383,48 @@
         function toggleVehicles(driverId) {
             const row = document.getElementById(`vehicles-${driverId}`);
             row.style.display = row.style.display === 'none' || row.style.display === '' ? 'table-row' : 'none';
+        }
+
+        // ================== ROUTE UI SCRIPTS ==================
+        function toggleRouteForm() {
+            const f = document.getElementById('route-form');
+            f.style.display = f.style.display === 'none' ? 'block' : 'none';
+            if (f.style.display === 'block') f.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function addSegment(start = '', end = '', dist = '', mins = '') {
+            const container = document.getElementById('segments-container');
+            const index = container.children.length;
+            const div = document.createElement('div');
+            div.className = 'segment-row';
+            div.innerHTML = `
+                <input name="NewRoute.Segments[${index}].StartPoint" placeholder="Start Point *" value="${start}" />
+                <input name="NewRoute.Segments[${index}].EndPoint" placeholder="End Point *" value="${end}" />
+                <input name="NewRoute.Segments[${index}].SegmentDistanceKm" placeholder="Distance (km)" value="${dist}" />
+                <input name="NewRoute.Segments[${index}].SegmentEstimatedMinutes" placeholder="Est. Minutes" value="${mins}" />
+                <button type="button" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeSegment(btn) {
+            const row = btn.parentNode;
+            const container = document.getElementById('segments-container');
+            container.removeChild(row);
+
+            Array.from(container.children).forEach((child, idx) => {
+                child.querySelectorAll('input').forEach(input => {
+                    const name = input.getAttribute('name') || '';
+                    const newName = name.replace(/NewRoute\.Segments\[\d+\]/, `NewRoute.Segments[${idx}]`);
+                    input.setAttribute('name', newName);
+                });
+            });
+        }
+
+        function toggleRouteDetails(routeId) {
+            const el = document.getElementById(`route-details-${routeId}`);
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+            if (el.style.display === 'block') el.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 }
