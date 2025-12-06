@@ -9,7 +9,7 @@ namespace SmartTransportation.Web.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Driver")]
+    [Authorize]
     public class DriverController : BaseApiController
     {
         private readonly IDriverService _driverService;
@@ -21,6 +21,12 @@ namespace SmartTransportation.Web.API.Controllers
             _vehicleService = vehicleService;
         }
 
+        private IActionResult UnauthorizedIfNoUserId()
+        {
+            if (CurrentUserId == null)
+                return Unauthorized("UserId claim missing in token.");
+            return null;
+        }
 
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDashboard()
@@ -29,71 +35,43 @@ namespace SmartTransportation.Web.API.Controllers
             if (unauthorized != null) return unauthorized;
 
             var dashboard = await _driverService.GetDashboardAsync(CurrentUserId!.Value);
-
             return Ok(dashboard);
         }
 
-
-
-
-        /// <summary>
-        /// Helper method: returns Unauthorized if CurrentUserId is missing
-        /// </summary>
-        private IActionResult UnauthorizedIfNoUserId()
-        {
-            if (CurrentUserId == null)
-                return Unauthorized("UserId claim missing in token.");
-            return null;
-        }
-
-        // ---------------------------
-        // GET: Current driver's full profile
-        // ---------------------------
         [HttpGet("profile")]
         public async Task<IActionResult> GetCurrentDriverProfile()
         {
             var unauthorized = UnauthorizedIfNoUserId();
             if (unauthorized != null) return unauthorized;
 
-            var driverFull = await _driverService.GetDriverFullByIdAsync(CurrentUserId.Value);
-            if (driverFull == null) return NotFound();
+            var profile = await _driverService.GetDriverFullByIdAsync(CurrentUserId.Value);
 
-            return Ok(driverFull);
+            if (profile == null)
+            {
+                // Return default empty profile if not exists
+                return Ok(new DriverFullDTO
+                {
+                    Driver = new DriverProfileDTO
+                    {
+                        FullName = "",
+                        Phone = "",
+                        Address = "",
+                        City = "",
+                        Country = "",
+                        DateOfBirth = null,
+                        Gender = "",
+                        ProfilePhotoUrl = "",
+                        DriverLicenseNumber = "",
+                        DriverLicenseExpiry = null,
+                        IsDriverVerified = false
+                    },
+                    Vehicle = null
+                });
+            }
+
+            return Ok(profile);
         }
 
-        // ---------------------------
-        // GET: Driver full profile by ID (self only)
-        // ---------------------------
-        [HttpGet("{driverId}")]
-        public async Task<IActionResult> GetDriverFull(int driverId)
-        {
-            var unauthorized = UnauthorizedIfNoUserId();
-            if (unauthorized != null) return unauthorized;
-
-            if (CurrentUserId != driverId) return Forbid();
-
-            var driverFull = await _driverService.GetDriverFullByIdAsync(driverId);
-            if (driverFull == null) return NotFound();
-
-            return Ok(driverFull);
-        }
-
-        // ---------------------------
-        // POST: Create driver (binds to current user)
-        // ---------------------------
-        [HttpPost]
-        public async Task<IActionResult> CreateDriver([FromBody] CreateDriverProfileDTO dto)
-        {
-            var unauthorized = UnauthorizedIfNoUserId();
-            if (unauthorized != null) return unauthorized;
-
-            var result = await _driverService.CreateDriverAsync(dto, CurrentUserId.Value);
-            return Ok(result);
-        }
-
-        // ---------------------------
-        // PUT: Update current driver profile
-        // ---------------------------
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateCurrentDriverProfile([FromBody] UpdateDriverProfileDTO dto)
         {
@@ -101,13 +79,92 @@ namespace SmartTransportation.Web.API.Controllers
             if (unauthorized != null) return unauthorized;
 
             var updated = await _driverService.UpdateDriverAsync(CurrentUserId.Value, dto);
-            if (updated == null) return NotFound();
+
+            // Auto-create if profile missing
+            if (updated == null)
+            {
+                var createDto = new CreateDriverProfileDTO
+                {
+                    FullName = dto.FullName ?? "",
+                    Phone = dto.Phone,
+                    Address = dto.Address,
+                    City = dto.City,
+                    Country = dto.Country,
+                    DateOfBirth = dto.DateOfBirth,
+                    Gender = dto.Gender,
+                    ProfilePhotoUrl = dto.ProfilePhotoUrl,
+                    DriverLicenseNumber = dto.DriverLicenseNumber,
+                    DriverLicenseExpiry = dto.DriverLicenseExpiry
+                };
+
+                var created = await _driverService.CreateDriverAsync(createDto, CurrentUserId.Value);
+                return Ok(created);
+            }
 
             return Ok(updated);
         }
 
-        // ---------------------------
-        // POST: Create vehicle for current driver
+        [HttpGet("vehicle")]
+        public async Task<IActionResult> GetVehicle()
+        {
+            var unauthorized = UnauthorizedIfNoUserId();
+            if (unauthorized != null) return unauthorized;
+
+            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
+
+            if (vehicle == null)
+            {
+                // Return default vehicle
+                return Ok(new VehicleDTO
+                {
+                    VehicleId = 0,
+                    DriverId = CurrentUserId.Value,
+                    VehicleMake = "",
+                    VehicleModel = "",
+                    VehicleYear = null,
+                    PlateNumber = "",
+                    Color = "",
+                    SeatsCount = 0,
+                    VehicleLicenseNumber = "",
+                    VehicleLicenseExpiry = null,
+                    IsVerified = false
+                });
+            }
+
+            return Ok(vehicle);
+        }
+
+        [HttpPut("vehicle")]
+        public async Task<IActionResult> UpdateVehicle([FromBody] UpdateVehicleDTO dto)
+        {
+            var unauthorized = UnauthorizedIfNoUserId();
+            if (unauthorized != null) return unauthorized;
+
+            var existing = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
+
+            if (existing == null)
+            {
+                // Auto-create vehicle if missing
+                var createDto = new CreateVehicleDTO
+                {
+                    VehicleMake = dto.VehicleMake,
+                    VehicleModel = dto.VehicleModel,
+                    VehicleYear = dto.VehicleYear,
+                    PlateNumber = dto.PlateNumber,
+                    Color = dto.Color,
+                    SeatsCount = dto.SeatsCount,
+                    VehicleLicenseNumber = dto.VehicleLicenseNumber,
+                    VehicleLicenseExpiry = dto.VehicleLicenseExpiry
+                };
+
+                var created = await _vehicleService.CreateVehicleAsync(CurrentUserId.Value, createDto);
+                return Ok(created);
+            }
+
+            var updated = await _vehicleService.UpdateVehicleAsync(existing.VehicleId, dto);
+            return Ok(updated);
+        }
+
         [HttpPost("vehicle")]
         public async Task<IActionResult> CreateVehicle([FromBody] CreateVehicleDTO dto)
         {
@@ -120,38 +177,5 @@ namespace SmartTransportation.Web.API.Controllers
             return Ok(result);
         }
 
-        [HttpPut("vehicle")]
-        public async Task<IActionResult> UpdateVehicle([FromBody] UpdateVehicleDTO dto)
-        {
-            var unauthorized = UnauthorizedIfNoUserId();
-            if (unauthorized != null) return unauthorized;
-
-            // Get the vehicle assigned to current driver
-            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
-            if (vehicle == null)
-                return NotFound(new { Error = "NotFound", Message = "Vehicle does not exist for this driver." });
-
-            // Update only using DTO fields
-            var updated = await _vehicleService.UpdateVehicleAsync(vehicle.VehicleId, dto);
-
-            return Ok(updated);
-        }
-
-
-        // ---------------------------
-        // GET: Get current driver's vehicle
-        // ---------------------------
-        [HttpGet("vehicle")]
-        public async Task<IActionResult> GetVehicle()
-        {
-            var unauthorized = UnauthorizedIfNoUserId();
-            if (unauthorized != null) return unauthorized;
-
-            var vehicle = await _vehicleService.GetVehicleByDriverIdAsync(CurrentUserId.Value);
-            if (vehicle == null)
-                return NotFound(new { Error = "NotFound", Message = "No vehicle found for this driver." });
-
-            return Ok(vehicle);
-        }
     }
 }

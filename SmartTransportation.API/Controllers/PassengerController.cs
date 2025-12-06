@@ -8,7 +8,7 @@ namespace SmartTransportation.Web.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Passenger")]
+    [Authorize]
     public class PassengerController : BaseApiController
     {
         private readonly IUserProfileService _profileService;
@@ -20,27 +20,36 @@ namespace SmartTransportation.Web.API.Controllers
 
         // -------------------------------
         // GET: Current passenger profile
-        // Route: GET api/Passenger/profile
         // -------------------------------
         [HttpGet("profile")]
         public async Task<IActionResult> GetProfile()
         {
-            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId is null)
+                return Unauthorized("UserId claim missing in token.");
 
             var profile = await _profileService.GetByUserIdAsync(CurrentUserId.Value);
-            if (profile == null) return NotFound("Profile not found.");
 
-            return Ok(profile);
+            // Return default empty profile instead of 404
+            return Ok(profile ?? new BaseUserProfileDTO
+            {
+                FullName = "",
+                Phone = "",
+                Address = "",
+                City = "",
+                Country = "",
+                Gender = "",
+                DateOfBirth = null
+            });
         }
 
         // -------------------------------
         // POST: Create passenger profile
-        // Route: POST api/Passenger/profile
         // -------------------------------
         [HttpPost("profile")]
         public async Task<IActionResult> CreateProfile([FromBody] CreateUserProfileDTO dto)
         {
-            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId is null)
+                return Unauthorized("UserId claim missing in token.");
 
             var existing = await _profileService.GetByUserIdAsync(CurrentUserId.Value);
             if (existing != null)
@@ -52,16 +61,36 @@ namespace SmartTransportation.Web.API.Controllers
 
         // -------------------------------
         // PUT: Update passenger profile
-        // Route: PUT api/Passenger/profile
+        // Auto-create if profile doesn't exist
         // -------------------------------
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] UpdateUserProfileDTO dto)
         {
-            if (CurrentUserId == null) return Unauthorized("UserId claim missing in token.");
+            if (CurrentUserId is null)
+                return Unauthorized("UserId claim missing in token.");
 
+            var existing = await _profileService.GetByUserIdAsync(CurrentUserId.Value);
+
+            // Auto-create if missing
+            if (existing == null)
+            {
+                var createDto = new CreateUserProfileDTO
+                {
+                    FullName = dto.FullName ?? "",
+                    Phone = dto.Phone,
+                    Address = dto.Address,
+                    City = dto.City,
+                    Country = dto.Country,
+                    DateOfBirth = dto.DateOfBirth,
+                    Gender = dto.Gender
+                };
+
+                var created = await _profileService.CreateAsync(createDto, CurrentUserId.Value);
+                return Ok(created);
+            }
+
+            // Update normal
             var updated = await _profileService.UpdateAsync(CurrentUserId.Value, dto);
-            if (updated == null) return NotFound("Profile not found.");
-
             return Ok(updated);
         }
     }

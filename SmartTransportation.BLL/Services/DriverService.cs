@@ -22,11 +22,9 @@ namespace SmartTransportation.BLL.Services
 
         public async Task<DriverDashboardDto> GetDashboardAsync(int driverId)
         {
-            // 1) Load driver for name
             var driver = await _unitOfWork.Users.GetByIdAsync(driverId);
             var driverName = driver?.UserProfile?.FullName ?? "Driver";
 
-            // 2) Load all trips created by this driver
             var trips = await _unitOfWork.Trips.FindAsync(t => t.DriverId == driverId);
             var tripsList = trips.ToList();
             var now = DateTime.UtcNow;
@@ -37,7 +35,6 @@ namespace SmartTransportation.BLL.Services
                 t.StartTime > now &&
                 !string.Equals(t.Status, "Canceled", StringComparison.OrdinalIgnoreCase));
 
-            // 3) Load all bookings for these trips
             var tripIds = tripsList.Select(t => t.TripId).ToList();
 
             var bookings = tripIds.Any()
@@ -47,12 +44,12 @@ namespace SmartTransportation.BLL.Services
             var activeBookings = bookings.Count(b =>
                 !string.Equals(b.BookingStatus, "Canceled", StringComparison.OrdinalIgnoreCase));
 
-            // Total driver earnings from PAID bookings
+            
             var totalEarnings = bookings
                 .Where(b => string.Equals(b.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
                 .Sum(b => b.TotalAmount);
 
-            // 4) Map trips → DTO list
+            
             var tripsDto = tripsList.Select(t =>
             {
                 var fromLocation = t.Route?.StartLocation ?? "N/A";
@@ -75,10 +72,10 @@ namespace SmartTransportation.BLL.Services
                 };
             }).ToList();
 
-            // 5) Notifications (empty for now — easy to add later)
+            
             var notificationsDto = new List<DriverDashboardNotificationDto>();
 
-            // 6) Return final dashboard object
+            
             return new DriverDashboardDto
             {
                 DriverName = driverName,
@@ -93,24 +90,23 @@ namespace SmartTransportation.BLL.Services
 
         public async Task<DriverProfileDTO> CreateDriverAsync(CreateDriverProfileDTO dto, int userId)
         {
-            // Fetch the user first
+            
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null) throw new Exception("User not found");
 
-            // Automatically mark user as driver if UserTypeId == 2
+            
             if (user.UserTypeId != 2)
             {
-                user.UserTypeId = 2;  // 2 = Driver
+                user.UserTypeId = 2; 
                 _unitOfWork.Users.Update(user);
                 await _unitOfWork.SaveAsync();
             }
 
-            // Check if the user already has a profile
+            
             var existingProfile = await _unitOfWork.UserProfiles.GetByUserIdAsync(userId);
             if (existingProfile != null)
                 return MapToDriverProfileDTO(existingProfile);
 
-            // Create driver profile
             var profile = new UserProfile
             {
                 UserId = userId,
@@ -135,9 +131,6 @@ namespace SmartTransportation.BLL.Services
             return MapToDriverProfileDTO(profile);
         }
 
-        // -------------------------------
-        // Get driver with vehicle
-        // -------------------------------
         public async Task<DriverFullDTO> GetDriverFullByIdAsync(int driverId)
         {
             var profile = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
@@ -153,9 +146,6 @@ namespace SmartTransportation.BLL.Services
             };
         }
 
-        // -------------------------------
-        // Get all drivers
-        // -------------------------------
         public async Task<IEnumerable<DriverProfileDTO>> GetAllDriversAsync()
         {
             var drivers = await _unitOfWork.UserProfiles.GetQueryable()
@@ -165,18 +155,12 @@ namespace SmartTransportation.BLL.Services
             return drivers.Select(MapToDriverProfileDTO);
         }
 
-        // -------------------------------
-        // Get driver by Id
-        // -------------------------------
+ 
         public async Task<DriverProfileDTO> GetDriverByIdAsync(int driverId)
         {
             var entity = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
             return entity == null ? null : MapToDriverProfileDTO(entity);
         }
-
-        // -------------------------------
-        // Update driver profile
-        // -------------------------------
         public async Task<DriverProfileDTO> UpdateDriverAsync(int driverId, UpdateDriverProfileDTO dto)
         {
             var entity = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
@@ -199,10 +183,6 @@ namespace SmartTransportation.BLL.Services
 
             return MapToDriverProfileDTO(entity);
         }
-
-        // -------------------------------
-        // Verify driver
-        // -------------------------------
         public async Task<bool> VerifyDriverAsync(int driverId, bool isVerified)
         {
             var entity = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
@@ -215,9 +195,6 @@ namespace SmartTransportation.BLL.Services
             return true;
         }
 
-        // -------------------------------
-        // Manual mapping helpers
-        // -------------------------------
         private DriverProfileDTO MapToDriverProfileDTO(UserProfile entity)
         {
             return new DriverProfileDTO

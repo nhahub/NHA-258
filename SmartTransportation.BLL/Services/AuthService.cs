@@ -86,7 +86,6 @@ namespace SmartTransportation.BLL.Services
                 UserTypeId = 0
             };
 
-            // Use repository method
             var user = await _unitOfWork.Users.GetByEmailAsync(model.Email);
 
             if (user == null)
@@ -152,7 +151,7 @@ namespace SmartTransportation.BLL.Services
             }
         }
 
-        // Generate JWT token
+        
         private AuthResponseDto GenerateJwtToken(User user)
         {
             var jwt = _config.GetSection("Jwt");
