@@ -21,7 +21,7 @@ namespace SmartTransportation.Web.Pages
         }
 
         [BindProperty] public UpdateDriverProfileDTO DriverDto { get; set; } = new();
-        [BindProperty] public UpdateVehicleDTO VehicleDto { get; set; } = new(); // VehicleId will be ignored on client side
+        [BindProperty] public UpdateVehicleDTO VehicleDto { get; set; } = new(); 
 
         [TempData] public string? SuccessMessage { get; set; }
         [TempData] public string? ErrorMessage { get; set; }
