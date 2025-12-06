@@ -76,6 +76,14 @@ namespace SmartTransportation.DAL.Repositories.Generic
                 PageSize = pageSize
             };
         }
+        public void RemoveRange(IEnumerable<T> entities)
+        {
+            _dbSet.RemoveRange(entities);
+        }
+        public async Task AddRangeAsync(IEnumerable<T> entities)
+        {
+            await _dbSet.AddRangeAsync(entities);
+        }
 
     }
 }

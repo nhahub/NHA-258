@@ -9,6 +9,7 @@ using SmartTransportation.DAL.Models;
 using SmartTransportation.DAL.Repositories.UnitOfWork;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace SmartTransportation.Web.Pages.Admin
@@ -38,23 +39,28 @@ namespace SmartTransportation.Web.Pages.Admin
         public List<AdminDriverDTO> Drivers { get; set; } = new();
 
         // ================== ROUTES ==================
-        // Bound property for create form
-        [BindProperty]
-        public CreateRouteDTO NewRoute { get; set; } = new();
-
-        // List of routes (loaded on GET)
+        [BindProperty] public CreateRouteDTO NewRoute { get; set; } = new();
+        [BindProperty] public UpdateRouteDTO EditRoute { get; set; } = new();
         public List<RouteDetailsDTO> Routes { get; set; } = new();
+        public bool IsEditing { get; set; }
+        public int? EditingRouteId { get; set; }
 
-        // On GET: load drivers + routes
+        // GET: Load drivers + routes
         public async Task<IActionResult> OnGetAsync(bool? onlyVerified = null)
         {
-            Drivers = new List<AdminDriverDTO>();
+            await LoadDataAsync(onlyVerified);
+            return Page();
+        }
 
+        private async Task LoadDataAsync(bool? onlyVerified = null)
+        {
+            // Load Drivers
             var driverEntities = await _unitOfWork.UserProfiles
                 .GetQueryable()
                 .Where(u => u.IsDriver && (!onlyVerified.HasValue || u.IsDriverVerified == onlyVerified.Value))
                 .ToListAsync();
 
+            Drivers = new List<AdminDriverDTO>();
             foreach (var driverEntity in driverEntities)
             {
                 var driverDto = MapToDriverProfileDTO(driverEntity);
@@ -68,121 +74,185 @@ namespace SmartTransportation.Web.Pages.Admin
                 });
             }
 
-            // Load routes (including segments) for display
+            // Load Routes
             var allRoutes = await _routeService.GetAllRoutesAsync();
             Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
-
-            return Page();
         }
 
-        // Handler to create route (form POST)
+        // ================== ROUTE CRUD ==================
         public async Task<IActionResult> OnPostAddRouteAsync()
         {
-            // Server-side validation: ensure required fields
-            if (string.IsNullOrWhiteSpace(NewRoute.RouteName)
-                || string.IsNullOrWhiteSpace(NewRoute.StartLocation)
-                || string.IsNullOrWhiteSpace(NewRoute.EndLocation))
-            {
-                ModelState.AddModelError(string.Empty, "Route Name, Start Location and End Location are required.");
-            }
-
-            // Remove empty segments from model (if any)
-            if (NewRoute.Segments != null && NewRoute.Segments.Any())
-            {
-                NewRoute.Segments = NewRoute.Segments
-                    .Where(s => !string.IsNullOrWhiteSpace(s.StartPoint) && !string.IsNullOrWhiteSpace(s.EndPoint))
-                    .Select((s, idx) =>
-                    {
-                        s.SegmentOrder = idx + 1;
-                        return s;
-                    })
-                    .ToList();
-            }
+            // Manual validation
+            if (string.IsNullOrWhiteSpace(NewRoute.RouteName))
+                ModelState.AddModelError(nameof(NewRoute.RouteName), "Route Name is required.");
+            if (string.IsNullOrWhiteSpace(NewRoute.StartLocation))
+                ModelState.AddModelError(nameof(NewRoute.StartLocation), "Start Location is required.");
+            if (string.IsNullOrWhiteSpace(NewRoute.EndLocation))
+                ModelState.AddModelError(nameof(NewRoute.EndLocation), "End Location is required.");
 
             if (!ModelState.IsValid)
             {
-                // reload display lists and show errors
-                var allRoutes = await _routeService.GetAllRoutesAsync();
-                Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
-                // preserve NewRoute for user to fix
+                await LoadDataAsync();
                 return Page();
             }
 
-            // If segments were not provided, create a default single segment from Start->End
-            if (NewRoute.Segments == null || NewRoute.Segments.Count == 0)
+            // Clean segments
+            if (NewRoute.Segments?.Any() == true)
+            {
+                NewRoute.Segments = NewRoute.Segments
+                    .Where(s => !string.IsNullOrWhiteSpace(s.StartPoint) && !string.IsNullOrWhiteSpace(s.EndPoint))
+                    .Select((s, idx) => { s.SegmentOrder = idx + 1; return s; })
+                    .ToList();
+            }
+
+            // If no valid segments, create default
+            if (NewRoute.Segments == null || !NewRoute.Segments.Any())
             {
                 NewRoute.Segments = new List<CreateSegmentDTO>
+        {
+            new() { SegmentOrder = 1, StartPoint = NewRoute.StartLocation, EndPoint = NewRoute.EndLocation }
+        };
+            }
+
+            try
+            {
+                await _routeService.CreateRouteAsync(NewRoute);
+                TempData["SuccessMessage"] = "Route created successfully!";
+                NewRoute = new CreateRouteDTO(); // reset form
+                return RedirectToPage();
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("", $"Error: {ex.Message}");
+                await LoadDataAsync();
+                return Page();
+            }
+        }
+
+
+        public async Task<IActionResult> OnPostUpdateRouteAsync()
+        {
+            if (EditRoute?.RouteId <= 0 || string.IsNullOrWhiteSpace(EditRoute.RouteName) ||
+                string.IsNullOrWhiteSpace(EditRoute.StartLocation) || string.IsNullOrWhiteSpace(EditRoute.EndLocation))
+            {
+                ModelState.AddModelError("", "Invalid route data.");
+                await LoadDataAsync();
+                return Page();
+            }
+
+            if (EditRoute.Segments?.Any() == true)
+            {
+                EditRoute.Segments = EditRoute.Segments
+                    .Where(s => !string.IsNullOrWhiteSpace(s.StartPoint) && !string.IsNullOrWhiteSpace(s.EndPoint))
+                    .Select((s, idx) => { s.SegmentOrder = idx + 1; return s; })
+                    .ToList();
+            }
+
+            if (EditRoute.Segments == null || !EditRoute.Segments.Any())
+            {
+                EditRoute.Segments = new List<CreateSegmentDTO>
                 {
-                    new CreateSegmentDTO
-                    {
-                        SegmentOrder = 1,
-                        StartPoint = NewRoute.StartLocation,
-                        EndPoint = NewRoute.EndLocation,
-                        SegmentDistanceKm = 0,
-                        SegmentEstimatedMinutes = 0
-                    }
+                    new() { SegmentOrder = 1, StartPoint = EditRoute.StartLocation, EndPoint = EditRoute.EndLocation }
                 };
             }
 
             try
             {
-                var created = await _routeService.CreateRouteAsync(NewRoute);
-                // Clear NewRoute after creation
-                NewRoute = new CreateRouteDTO();
-                // Redirect to GET to avoid repost
+                var updated = await _routeService.UpdateRouteAsync(EditRoute.RouteId, EditRoute);
+                if (updated == null)
+                {
+                    ModelState.AddModelError("", "Route not found.");
+                    await LoadDataAsync();
+                    return Page();
+                }
+
+                TempData["SuccessMessage"] = "Route updated successfully!";
+                EditRoute = new UpdateRouteDTO();
                 return RedirectToPage();
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, $"Error adding route: {ex.Message}");
-                var allRoutes = await _routeService.GetAllRoutesAsync();
-                Routes = allRoutes.OrderBy(r => r.RouteName).ToList();
+                ModelState.AddModelError("", $"Error: {ex.Message}");
+                await LoadDataAsync();
                 return Page();
             }
         }
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> OnPostDeleteRouteAsync(int routeId)
+        {
+            try
+            {
+                var deleted = await _routeService.DeleteRouteAsync(routeId); // << use _routeService here
+                if (!deleted)
+                    return new JsonResult(new { success = false, message = "Route not found" });
 
-        // ================== DRIVER / VEHICLE VERIFICATION (UNCHANGED) ==================
+                return new JsonResult(new { success = true, message = "Route and related data deleted successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return new JsonResult(new { success = false, message = $"Delete failed: {ex.Message}" });
+            }
+        }
+
+
+
+        public async Task<IActionResult> OnGetEditRouteAsync(int routeId)
+        {
+            await LoadDataAsync();
+            var route = await _routeService.GetRouteDetailsByIdAsync(routeId);
+            if (route != null)
+            {
+                EditRoute = new UpdateRouteDTO
+                {
+                    RouteId = route.RouteId,
+                    RouteName = route.RouteName,
+                    StartLocation = route.StartLocation,
+                    EndLocation = route.EndLocation,
+                    RouteType = route.RouteType,
+                    IsCircular = route.IsCircular,
+                    Segments = route.Segments.Select(s => new CreateSegmentDTO
+                    {
+                        SegmentOrder = s.SegmentOrder,
+                        StartPoint = s.StartPoint,
+                        EndPoint = s.EndPoint,
+                        SegmentDistanceKm = s.DistanceKm,
+                        SegmentEstimatedMinutes = s.EstimatedMinutes
+                    }).ToList()
+                };
+                IsEditing = true;
+                EditingRouteId = routeId;
+            }
+            return Page();
+        }
+
+        // ================== DRIVER / VEHICLE VERIFICATION ==================
         public async Task<IActionResult> OnPostVerifyDriverAsync(int driverId, bool isVerified)
         {
             var ok = await _adminService.VerifyDriverAsync(driverId, isVerified);
-            if (!ok)
-                return new JsonResult(new { success = false, message = "Driver not found" });
+            if (!ok) return new JsonResult(new { success = false, message = "Driver not found" });
 
             if (!isVerified)
             {
                 var vehicles = await _adminService.GetVehiclesByDriverAsync(driverId);
-                foreach (var v in vehicles)
-                {
-                    await _adminService.VerifyVehicleAsync(v.VehicleId, driverId, false);
-                }
+                foreach (var v in vehicles) await _adminService.VerifyVehicleAsync(v.VehicleId, driverId, false);
             }
 
-            return new JsonResult(new
-            {
-                success = true,
-                message = isVerified ? "Driver verified successfully" : "Driver rejected successfully"
-            });
+            return new JsonResult(new { success = true, message = isVerified ? "Verified!" : "Rejected!" });
         }
 
         public async Task<IActionResult> OnPostVerifyVehicleAsync(int driverId, int vehicleId, bool isVerified)
         {
             var driver = await _unitOfWork.UserProfiles.GetByUserIdAsync(driverId);
-            if (driver == null)
-                return new JsonResult(new { success = false, message = "Driver not found" });
-
+            if (driver == null) return new JsonResult(new { success = false, message = "Driver not found" });
             if (!driver.IsDriverVerified && isVerified)
-                return new JsonResult(new { success = false, message = "Cannot verify vehicle because driver is not verified." });
+                return new JsonResult(new { success = false, message = "Driver must be verified first" });
 
             var ok = await _adminService.VerifyVehicleAsync(vehicleId, driverId, isVerified);
-            if (!ok)
-                return new JsonResult(new { success = false, message = "Vehicle not found" });
+            if (!ok) return new JsonResult(new { success = false, message = "Vehicle not found" });
 
-            return new JsonResult(new
-            {
-                success = true,
-                message = isVerified ? "Vehicle verified successfully" : "Vehicle rejected successfully"
-            });
+            return new JsonResult(new { success = true, message = isVerified ? "Verified!" : "Rejected!" });
         }
+       
 
         private DriverProfileDTO MapToDriverProfileDTO(UserProfile entity)
         {

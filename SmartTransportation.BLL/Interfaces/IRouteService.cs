@@ -8,12 +8,12 @@ namespace SmartTransportation.BLL.Interfaces
         Task<RouteDetailsDTO> CreateRouteAsync(CreateRouteDTO routeDto);
         Task<RouteDetailsDTO?> GetRouteDetailsByIdAsync(int routeId);
         Task<IEnumerable<RouteDetailsDTO>> GetAllRoutesAsync();
+        Task<PagedResult<RouteDetailsDTO>> GetPagedRoutesAsync(string? search, int pageNumber, int pageSize);
 
-        // ⭐ Paged Routes method
-        Task<PagedResult<RouteDetailsDTO>> GetPagedRoutesAsync(
-            string? search,
-            int pageNumber,
-            int pageSize
-        );
+        Task<bool> RouteExistsAsync(string start, string end);
+
+        Task<RouteDetailsDTO?> UpdateRouteAsync(int routeId, UpdateRouteDTO dto);
+        Task<bool> DeleteRouteAsync(int routeId);
     }
+
 }

@@ -1,9 +1,17 @@
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+
 namespace SmartTransportation.BLL.DTOs.Route
 {
     public class CreateRouteDTO
     {
         public string RouteName { get; set; } = string.Empty;
+
+        
         public string StartLocation { get; set; } = string.Empty;
+
+      
         public string EndLocation { get; set; } = string.Empty;
 
         public string? RouteType { get; set; }
@@ -11,5 +19,4 @@ namespace SmartTransportation.BLL.DTOs.Route
 
         public List<CreateSegmentDTO> Segments { get; set; } = new();
     }
-
 }

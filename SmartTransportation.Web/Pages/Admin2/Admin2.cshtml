@@ -2,37 +2,132 @@
 @model SmartTransportation.Web.Pages.Admin.Admin2Model
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
-    ViewData["Title"] = "Driver Management";
+    ViewData["Title"] = "Admin Dashboard";
     Layout = "_Layout";
+
+    // Pagination properties
+    int currentPage = 1;
+    int routesPerPage = 6;
+    int totalRoutes = Model.Routes?.Count ?? 0;
+    int totalPages = totalRoutes > 0 ? (int)Math.Ceiling((double)totalRoutes / routesPerPage) : 0;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/admin_dashboard_css.css" />
     <style>
-        /* small helpers for route section */
-        .route-section {
-            margin-top: 48px;
-            border-top: 1px solid var(--gray-200);
-            padding-top: 24px;
+        /* ===== TAB SWITCHER ===== */
+        .tab-switcher {
+            display: flex;
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .segment-row, .segment-block {
+        .tab-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--gray-600);
+        }
+
+            .tab-btn.active, .tab-btn:hover {
+                background: white;
+                color: var(--primary-600);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+
+        .tab-content {
+            display: none;
+        }
+
+            .tab-content.active {
+                display: block;
+            }
+
+        /* ===== PAGINATION ===== */
+        .pagination-section {
+            margin-top: 24px;
+        }
+
+        .pagination-controls {
+            margin-top: 24px;
             display: flex;
+            justify-content: center;
             gap: 8px;
-            margin-bottom: 8px;
             align-items: center;
             flex-wrap: wrap;
         }
 
-            .segment-row input, .segment-block input {
-                padding: 6px;
-                border-radius: 4px;
-                border: 1px solid var(--gray-300);
-                min-width: 120px;
+        .pagination-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+            .pagination-btn:hover:not(.disabled) {
+                background: var(--gray-50);
+                border-color: var(--gray-400);
             }
 
-        .segments-list {
-            margin-top: 12px;
+            .pagination-btn.disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+        .page-numbers {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .page-num {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            min-width: 36px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+            .page-num:hover:not(.active) {
+                background: var(--gray-50);
+                border-color: var(--gray-400);
+            }
+
+            .page-num.active {
+                background: var(--primary-600);
+                color: white;
+                border-color: var(--primary-600);
+            }
+
+        /* ===== ROUTE STYLES ===== */
+        .routes-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fill,minmax(400px,1fr));
+        }
+
+        .route-card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .route-summary {
@@ -40,275 +135,361 @@
             color: var(--gray-700);
         }
 
-        .error {
-            color: var(--danger-600);
-            font-size: 0.95rem;
-            margin-top: 8px;
+        .form-input {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 14px;
         }
+
+        .segment-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+            .segment-row input {
+                padding: 6px;
+                border-radius: 4px;
+                border: 1px solid var(--gray-300);
+                min-width: 120px;
+            }
     </style>
 }
 
 <div class="admin-container">
-    <!-- Admin Header -->
+    <!-- ================= HEADER & TABS ================= -->
     <div class="admin-header">
-        <h1>Driver Management</h1>
-        <p>Review and manage drivers and their vehicles</p>
+        <h1>Admin Dashboard</h1>
+        <p>Manage drivers, vehicles, and routes efficiently</p>
     </div>
 
-    <form method="post">
-        <input name="__RequestVerificationToken" type="hidden"
-               value='@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken' />
-    </form>
+    <div class="tab-switcher">
+        <button class="tab-btn active" onclick="switchTab('drivers')">👨‍💼 Driver Management</button>
+        <button class="tab-btn" onclick="switchTab('routes')">🗺️ Route Management</button>
+    </div>
 
-    <div class="content-tabs">
-        <div class="tab-content">
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Phone</th>
-                            <th>City</th>
-                            <th>Rating</th>
-                            <th>Status</th>
-                            <th class="text-end">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Drivers != null && Model.Drivers.Any())
+    <!-- ================= DRIVERS TAB ================= -->
+    <div id="drivers-tab" class="tab-content active">
+        <input type="hidden" id="antiforgery-token" value="@Antiforgery.GetAndStoreTokens(HttpContext).RequestToken" />
+
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>City</th>
+                        <th>Rating</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Drivers?.Any() == true)
+                    {
+                        foreach (var driver in Model.Drivers)
                         {
-                            foreach (var driver in Model.Drivers)
-                            {
-                                <tr id="driver-row-@driver.DriverId">
-                                    <td>@driver.Driver.FullName</td>
-                                    <td>@driver.Driver.Phone</td>
-                                    <td>@driver.Driver.City</td>
-                                    <td>
-                                        <span class="status-badge status-active">@driver.Driver.DriverRating ⭐</span>
-                                    </td>
-                                    <td id="driver-verified-@driver.DriverId">
-                                        @if (driver.Driver.IsDriverVerified)
-                                        {
-                                            <span class="status-badge status-active">✔ Verified</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="status-badge status-inactive">✖ Not Verified</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">
-                                        <div class="action-buttons">
-                                            <button type="button" onclick="verifyDriver(@driver.DriverId,true)" class="btn-icon btn-edit">✔</button>
-                                            <button type="button" onclick="verifyDriver(@driver.DriverId,false)" class="btn-icon btn-delete">✖</button>
-                                            <button type="button" onclick="toggleVehicles(@driver.DriverId)" class="btn-icon btn-edit">🚚</button>
-                                        </div>
-                                    </td>
-                                </tr>
+                            <tr id="driver-row-@driver.DriverId">
+                                <td>@driver.Driver.FullName</td>
+                                <td>@driver.Driver.Phone</td>
+                                <td>@driver.Driver.City</td>
+                                <td><span class="status-badge status-active">@driver.Driver.DriverRating ⭐</span></td>
+                                <td id="driver-verified-@driver.DriverId">
+                                    @if (driver.Driver.IsDriverVerified)
+                                    {
+                                        <span class="status-badge status-active">✔ Verified</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="status-badge status-inactive">✖ Not Verified</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    <div class="action-buttons">
+                                        <button type="button" onclick="verifyDriver(@driver.DriverId,true)" class="btn-icon btn-edit">✔</button>
+                                        <button type="button" onclick="verifyDriver(@driver.DriverId,false)" class="btn-icon btn-delete">✖</button>
+                                        <button type="button" onclick="toggleVehicles(@driver.DriverId)" class="btn-icon btn-edit">🚚</button>
+                                    </div>
+                                </td>
+                            </tr>
 
-                                <tr id="vehicles-@driver.DriverId" style="display:none;">
-                                    <td colspan="6">
-                                        <div>
-                                            <h6>@driver.Driver.FullName's Vehicles</h6>
-                                            <div class="table-container">
-                                                <table class="data-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Make</th>
-                                                            <th>Model</th>
-                                                            <th>Year</th>
-                                                            <th>Plate</th>
-                                                            <th>Verified</th>
-                                                            <th class="text-end">Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="vehicle-body-@driver.DriverId">
-                                                        @if (driver.Vehicles != null && driver.Vehicles.Any())
+                            <tr id="vehicles-@driver.DriverId" style="display:none;">
+                                <td colspan="6">
+                                    <div>
+                                        <h6>@driver.Driver.FullName's Vehicles</h6>
+                                        <div class="table-container">
+                                            <table class="data-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Make</th>
+                                                        <th>Model</th>
+                                                        <th>Year</th>
+                                                        <th>Plate</th>
+                                                        <th>Verified</th>
+                                                        <th class="text-end">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="vehicle-body-@driver.DriverId">
+                                                    @if (driver.Vehicles?.Any() == true)
+                                                    {
+                                                        foreach (var v in driver.Vehicles)
                                                         {
-                                                            foreach (var v in driver.Vehicles)
-                                                            {
-                                                                var isDriverVerified = driver.Driver.IsDriverVerified;
-                                                                <tr>
-                                                                    <td>@v.VehicleMake</td>
-                                                                    <td>@v.VehicleModel</td>
-                                                                    <td>@v.VehicleYear</td>
-                                                                    <td>@v.PlateNumber</td>
-                                                                    <td id="vehicle-verified-@v.VehicleId">
-                                                                        @if (v.IsVerified)
-                                                                        {
-                                                                            <span class="status-badge status-active">✔</span>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <span class="status-badge status-inactive">✖</span>
-                                                                        }
-                                                                    </td>
-                                                                    <td class="text-end">
-                                                                        <div class="action-buttons">
-                                                                            <button type="button"
-                                                                                    onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,true)"
-                                                                                    class="btn-icon btn-edit"
-                                                                                    @(!isDriverVerified ? "disabled style='opacity:0.5;cursor:not-allowed;'" : "")>
-                                                                                ✔
-                                                                            </button>
-                                                                            <button type="button"
-                                                                                    onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,false)"
-                                                                                    class="btn-icon btn-delete"
-                                                                                    @(!isDriverVerified ? "disabled style='opacity:0.5;cursor:not-allowed;'" : "")>
-                                                                                ✖
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            }
-                                                        }
-                                                        else
-                                                        {
+                                                            var isDriverVerified = driver.Driver.IsDriverVerified;
                                                             <tr>
-                                                                <td colspan="6" style="text-align:center; color: var(--gray-600); padding: 40px 20px;">No vehicles</td>
+                                                                <td>@v.VehicleMake</td>
+                                                                <td>@v.VehicleModel</td>
+                                                                <td>@v.VehicleYear</td>
+                                                                <td>@v.PlateNumber</td>
+                                                                <td id="vehicle-verified-@v.VehicleId">
+                                                                    @if (v.IsVerified)
+                                                                    {
+                                                                        <span class="status-badge status-active">✔</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="status-badge status-inactive">✖</span>
+                                                                    }
+                                                                </td>
+                                                                <td class="text-end">
+                                                                    <div class="action-buttons">
+                                                                        <button type="button"
+                                                                                onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,true)"
+                                                                                class="btn-icon btn-edit"
+                                                                                @(isDriverVerified ? "" : "disabled style='opacity:0.5;cursor:not-allowed;'")>
+                                                                            ✔
+                                                                        </button>
+                                                                        <button type="button"
+                                                                                onclick="verifyVehicle(@driver.DriverId,@v.VehicleId,false)"
+                                                                                class="btn-icon btn-delete"
+                                                                                @(isDriverVerified ? "" : "disabled style='opacity:0.5;cursor:not-allowed;'")>
+                                                                            ✖
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
                                                             </tr>
                                                         }
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <tr><td colspan="6" style="text-align:center; color: var(--gray-600); padding:40px 20px;">No vehicles</td></tr>
+                                                    }
+                                                </tbody>
+                                            </table>
                                         </div>
-                                    </td>
-                                </tr>
-                            }
-                        }
-                        else
-                        {
-                            <tr>
-                                <td colspan="6" style="text-align:center; color: var(--gray-600); padding: 40px 20px;">No drivers found</td>
+                                    </div>
+                                </td>
                             </tr>
                         }
-                    </tbody>
-                </table>
-            </div>
+                    }
+                    else
+                    {
+                        <tr><td colspan="6" style="text-align:center; color:var(--gray-600); padding:40px 20px;">No drivers found</td></tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- ========================= -->
-    <!-- Route Management Section -->
-    <!-- ========================= -->
-    <div class="route-section">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
+    <!-- ================= ROUTES TAB ================= -->
+    <div id="routes-tab" class="tab-content">
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div style="background: var(--success-100); color: var(--success-800); padding:8px 16px; border-radius:6px; font-size:14px; margin-bottom:16px;">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="error">@Html.ValidationSummary(false)</div>
+        }
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
             <div>
                 <h2>Route Management</h2>
-                <p>Create routes with multiple segments and review existing routes</p>
+                <p>CRUD operations for routes with segments</p>
             </div>
-            <div>
-                <button class="btn btn-edit" onclick="toggleRouteForm()">+ Add Route</button>
-            </div>
+            <button class="btn btn-edit" onclick="toggleRouteForm('create')">+ Add Route</button>
         </div>
 
-        <!-- ================== FIXED ADD ROUTE FORM ================== -->
-        <form method="post" asp-page-handler="AddRoute">
+        <!-- CREATE FORM -->
+        <form method="post" asp-page-handler="AddRoute" id="create-form">
             @Html.AntiForgeryToken()
-
-            <div id="route-form" style="display:none; margin-top:16px; background:var(--gray-50); padding:16px; border-radius:8px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <input asp-for="NewRoute.RouteName" placeholder="Route Name *" class="form-input" />
-                    <input asp-for="NewRoute.RouteType" placeholder="Route Type (optional)" class="form-input" />
-                    <input asp-for="NewRoute.StartLocation" placeholder="Start Location *" class="form-input" />
-                    <input asp-for="NewRoute.EndLocation" placeholder="End Location *" class="form-input" />
+            <div id="create-route-form" style="display:none; margin-bottom:24px; background:var(--gray-50); padding:20px; border-radius:12px; border:2px solid var(--gray-200);">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                    <input asp-for="NewRoute.RouteName" placeholder="Route Name *" class="form-input" required />
+                    <select asp-for="NewRoute.RouteType" class="form-input" required>
+                        <option value="">-- Select Route Type --</option>
+                        <option value="Urban">Urban</option>
+                        <option value="Agricultural">Agricultural / Rural</option>
+                        <option value="Desert">Desert / Remote</option>
+                        <option value="Coastal">Coastal</option>
+                        <option value="Touristic">Touristic</option>
+                    </select>
+                    <input asp-for="NewRoute.StartLocation" placeholder="Start Location *" class="form-input" required />
+                    <input asp-for="NewRoute.EndLocation" placeholder="End Location *" class="form-input" required />
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label style="margin:0;"><input asp-for="NewRoute.IsCircular" type="checkbox" /> Circular Route</label>
                     </div>
                 </div>
 
-                <h4 style="margin-top:12px;">Segments</h4>
-                <div id="segments-container" class="segments-list">
-                    @if (Model.NewRoute?.Segments != null && Model.NewRoute.Segments.Any())
-                    {
-                        for (int i = 0; i < Model.NewRoute.Segments.Count; i++)
-                        {
-                            <div class="segment-row">
-                                <input name="NewRoute.Segments[@i].StartPoint" value="@Model.NewRoute.Segments[i].StartPoint" placeholder="Start Point *" />
-                                <input name="NewRoute.Segments[@i].EndPoint" value="@Model.NewRoute.Segments[i].EndPoint" placeholder="End Point *" />
-                                <input name="NewRoute.Segments[@i].SegmentDistanceKm" value="@Model.NewRoute.Segments[i].SegmentDistanceKm" placeholder="Distance (km)" />
-                                <input name="NewRoute.Segments[@i].SegmentEstimatedMinutes" value="@Model.NewRoute.Segments[i].SegmentEstimatedMinutes" placeholder="Est. Minutes" />
-                                <button type="button" class="btn" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
-                            </div>
-                        }
-                    }
+                <h4 style="margin-bottom:8px;">Segments</h4>
+                <div id="create-segments-container" class="segments-list">
+                    <div class="segment-row" data-index="0">
+                        <input name="NewRoute.Segments[0].StartPoint" placeholder="Start Point *" required />
+                        <input name="NewRoute.Segments[0].EndPoint" placeholder="End Point *" required />
+                        <input name="NewRoute.Segments[0].SegmentDistanceKm" placeholder="Distance (km)" type="number" step="0.1" min="0" />
+                        <input name="NewRoute.Segments[0].SegmentEstimatedMinutes" placeholder="Est. Minutes" type="number" min="0" />
+                        <input name="NewRoute.Segments[0].SegmentOrder" type="hidden" value="1" />
+                        <button type="button" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
+                    </div>
                 </div>
 
-                <div style="margin-top:8px; display:flex; gap:8px;">
-                    <button type="button" class="btn btn-add-segment" onclick="addSegment()">+ Add Segment</button>
+                <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-add-segment" onclick="addSegment('create')">+ Segment</button>
                     <button type="submit" class="btn btn-edit">Create Route</button>
-                    <button type="button" class="btn" onclick="toggleRouteForm()" style="background:var(--gray-300);">Cancel</button>
+                    <button type="button" class="btn" onclick="toggleRouteForm('create')" style="background:var(--gray-300);">Cancel</button>
                 </div>
-
-                @if (!ViewData.ModelState.IsValid)
-                {
-                    <div class="error">Please fix the form errors above.</div>
-                }
-                @if (ViewData.ModelState.ErrorCount > 0)
-                {
-                    foreach (var m in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                    {
-                        <div class="error">@m.ErrorMessage</div>
-                    }
-                }
             </div>
         </form>
 
-        <!-- Routes List -->
-        <div style="margin-top:18px;">
-            @if (Model.Routes != null && Model.Routes.Any())
-            {
-                foreach (var route in Model.Routes)
-                {
-                    <div class="route-card" style="border:1px solid var(--gray-200); border-radius:8px; padding:12px; margin-bottom:12px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <div class="route-summary">@route.RouteName (@(route.IsCircular ? "Circular" : "Linear"))</div>
-                                <div style="font-size:13px; color:var(--gray-600);">@route.StartLocation → @route.EndLocation</div>
-                                <div style="font-size:13px; color:var(--gray-600); margin-top:6px;">Total: @(route.TotalDistanceKm?.ToString("F1") ?? "0.0") km • @(route.EstimatedTimeMinutes ?? 0) min</div>
-                            </div>
-                            <div>
-                                <button class="btn btn-sm" onclick="toggleRouteDetails(@route.RouteId)">Details</button>
-                            </div>
-                        </div>
-
-                        <div id="route-details-@route.RouteId" style="display:none; margin-top:10px;">
-                            @if (route.Segments != null && route.Segments.Any())
-                            {
-                                <table class="data-table" style="width:100%; margin-top:8px;">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Start</th>
-                                            <th>End</th>
-                                            <th>Distance (km)</th>
-                                            <th>Est. Minutes</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var seg in route.Segments.OrderBy(s => s.SegmentOrder))
-                                        {
-                                            <tr>
-                                                <td style="font-weight:600;">@seg.SegmentOrder</td>
-                                                <td>@seg.StartPoint</td>
-                                                <td>@seg.EndPoint</td>
-                                                <td>@(seg.DistanceKm?.ToString("F1") ?? "0.0")</td>
-                                                <td>@(seg.EstimatedMinutes ?? 0)</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            }
-                            else
-                            {
-                                <div style="padding:12px; color:var(--gray-600);">No segments defined</div>
-                            }
+        <!-- EDIT FORM -->
+        @if (Model.IsEditing && Model.EditingRouteId.HasValue)
+        {
+            <form method="post" asp-page-handler="UpdateRoute" id="edit-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="EditRoute.RouteId" />
+                <div id="edit-route-form" style="display:block; margin-bottom:24px; background:var(--gray-50); padding:20px; border-radius:12px; border:2px solid var(--primary-300);">
+                    <!-- Edit fields same as create -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+                        <input asp-for="EditRoute.RouteName" placeholder="Route Name *" class="form-input" required />
+                        <input asp-for="EditRoute.RouteType" placeholder="Route Type" class="form-input" />
+                        <input asp-for="EditRoute.StartLocation" placeholder="Start Location *" class="form-input" required />
+                        <input asp-for="EditRoute.EndLocation" placeholder="End Location *" class="form-input" required />
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <label style="margin:0;"><input asp-for="EditRoute.IsCircular" type="checkbox" /> Circular Route</label>
                         </div>
                     </div>
+
+                    <h4 style="margin-bottom:8px;">Segments</h4>
+                    <div id="edit-segments-container" class="segments-list">
+                        @if (Model.EditRoute?.Segments?.Any() == true)
+                        {
+                            for (int i = 0; i < Model.EditRoute.Segments.Count; i++)
+                            {
+                                <div class="segment-row" data-index="@i">
+                                    <input asp-for="EditRoute.Segments[i].StartPoint" placeholder="Start Point *" required />
+                                    <input asp-for="EditRoute.Segments[i].EndPoint" placeholder="End Point *" required />
+                                    <input asp-for="EditRoute.Segments[i].SegmentDistanceKm" placeholder="Distance (km)" type="number" step="0.1" min="0" />
+                                    <input asp-for="EditRoute.Segments[i].SegmentEstimatedMinutes" placeholder="Est. Minutes" type="number" min="0" />
+                                    <input asp-for="EditRoute.Segments[i].SegmentOrder" type="hidden" />
+                                    <button type="button" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-add-segment" onclick="addSegment('edit')">+ Segment</button>
+                        <button type="submit" class="btn btn-edit">Update Route</button>
+                        <button type="button" class="btn" onclick="cancelEdit()" style="background:var(--gray-300);">Cancel</button>
+                    </div>
+                </div>
+            </form>
+        }
+
+        <!-- ================= ROUTES GRID & PAGINATION ================= -->
+        <div class="pagination-section">
+            <div id="routes-grid" class="routes-grid">
+                @if (Model.Routes?.Any() == true)
+                {
+                    foreach (var route in Model.Routes)
+                    {
+                        <div class="route-card" data-route-id="@route.RouteId">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                                <div style="flex:1;">
+                                    <div class="route-summary">@route.RouteName <span style="font-size:13px; opacity:0.8;">(@(route.IsCircular ? "🔄 Circular" : "➡️ Linear"))</span></div>
+                                    <div style="font-size:13px; color:var(--gray-600);">@route.StartLocation → @route.EndLocation</div>
+                                    <div style="font-size:13px; color:var(--gray-600);">
+                                        📏 @((route.TotalDistanceKm ?? 0).ToString("F1"))km • ⏱️ @(route.EstimatedTimeMinutes ?? 0)min • 📅 @route.CreatedAt.ToString("MMM dd")
+                                    </div>
+                                </div>
+                                <div class="route-actions">
+                                    <button class="btn btn-sm btn-edit" onclick="editRoute(@route.RouteId)" title="Edit">✏️</button>
+                                    <button class="btn btn-sm btn-delete" onclick="confirmDelete(@route.RouteId,'@Html.Raw(route.RouteName.Replace("'", "\\'"))')" title="Delete">🗑️</button>
+                                    <button class="btn btn-sm" onclick="toggleRouteDetails(@route.RouteId)" title="Details">👁️</button>
+                                </div>
+                            </div>
+                            <div id="route-details-@route.RouteId" style="display:none; margin-top:12px; padding-top:16px; border-top:1px solid var(--gray-200);">
+                                @if (route.Segments?.Any() == true)
+                                {
+                                    <table class="data-table compact">
+                                        <thead><tr><th>#</th><th>Start</th><th>End</th><th>Km</th><th>Min</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var seg in route.Segments.OrderBy(s => s.SegmentOrder))
+                                            {
+                                                <tr>
+                                                    <td>@seg.SegmentOrder</td>
+                                                    <td>@seg.StartPoint</td>
+                                                    <td>@seg.EndPoint</td>
+                                                    <td>@((seg.DistanceKm ?? 0).ToString("F1"))</td>
+                                                    <td>@(seg.EstimatedMinutes ?? 0)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                            </div>
+                        </div>
+                    }
                 }
-            }
-            else
+                else
+                {
+                    <div style="text-align:center; padding:40px; color:var(--gray-600); grid-column:1/-1;">
+                        <div style="font-size:48px; margin-bottom:16px;">🗺️</div>
+                        <div>No routes found. Create your first route above!</div>
+                    </div>
+                }
+            </div>
+
+            <!-- ================= PAGINATION BUTTONS ================= -->
+            @if (totalRoutes > 0)
             {
-                <div style="text-align:center; color: var(--gray-600); padding: 20px;">No routes found</div>
+                <div class="pagination-controls">
+                    <button class="pagination-btn @(currentPage == 1 ? "disabled" : "")" onclick="changePage(@(currentPage - 1))" id="prev-page">← Previous</button>
+                    <div class="page-numbers" id="page-numbers">
+                        @{
+                            var startPage = Math.Max(1, currentPage - 2);
+                            var endPage = Math.Min(totalPages, currentPage + 2);
+                            if (startPage > 1)
+                            {
+                                <span class="page-num @(1 == currentPage ? "active" : "")" onclick="changePage(1)">1</span>
+                                if (startPage > 2)
+                                {
+
+                                    <span>...</span>
+                                }
+                            }
+                            for (int i = startPage; i <= endPage; i++)
+                            {
+                                <span class="page-num @(i == currentPage ? "active" : "")" onclick="changePage(@i)">@i</span>
+                            }
+                            if (endPage < totalPages)
+                            {
+                                if (endPage < totalPages - 1)
+                                {
+
+                                    <span>...</span>
+                                }
+                                <span class="page-num @(totalPages == currentPage ? "active" : "")" onclick="changePage(@totalPages)">@totalPages</span>
+                            }
+                        }
+                    </div>
+                    <button class="pagination-btn @(currentPage >= totalPages ? "disabled" : "")" onclick="changePage(@(currentPage + 1))" id="next-page">Next →</button>
+                    <span id="page-info" style="color:var(--gray-600); font-size:14px;">Page @currentPage of @totalPages</span>
+                </div>
             }
         </div>
     </div>
@@ -316,115 +497,11 @@
 
 @section Scripts {
     <script>
-        // ================== DRIVER & VEHICLE SCRIPTS (UNCHANGED) ==================
-        function getAntiForgeryToken() {
-            return document.querySelector('input[name="__RequestVerificationToken"]').value;
-        }
-
-        async function verifyDriver(driverId, isVerified) {
-            try {
-                const res = await fetch(`?handler=VerifyDriver&driverId=${driverId}&isVerified=${isVerified}`, {
-                    method: 'POST',
-                    headers: { 'RequestVerificationToken': getAntiForgeryToken() }
-                });
-                const data = await res.json();
-                alert(data.message);
-
-                const verifiedCell = document.getElementById(`driver-verified-${driverId}`);
-                verifiedCell.innerHTML = isVerified
-                    ? '<span class="status-badge status-active">✔ Verified</span>'
-                    : '<span class="status-badge status-inactive">✖ Not Verified</span>';
-
-                const vehicleButtons = document.querySelectorAll(`#vehicle-body-${driverId} button`);
-                vehicleButtons.forEach(btn => {
-                    btn.disabled = !isVerified;
-                    btn.style.opacity = isVerified ? '1' : '0.5';
-                    btn.style.cursor = isVerified ? 'pointer' : 'not-allowed';
-                    if (!isVerified) btn.title = 'Driver must be verified first';
-                    else btn.removeAttribute('title');
-                });
-
-                if (!isVerified) {
-                    const vehicleCells = document.querySelectorAll(`#vehicle-body-${driverId} td[id^="vehicle-verified-"]`);
-                    vehicleCells.forEach(td => td.innerHTML = '<span class="status-badge status-inactive">✖</span>');
-                }
-            } catch (e) {
-                console.error(e);
-                alert("An error occurred. Please try again.");
-            }
-        }
-
-        async function verifyVehicle(driverId, vehicleId, isVerified) {
-            const driverVerifiedText = document.getElementById(`driver-verified-${driverId}`).innerText.trim();
-            if (!driverVerifiedText.includes("✔") && isVerified) {
-                alert("Driver must be verified first before verifying vehicles.");
-                return;
-            }
-
-            try {
-                const res = await fetch(`?handler=VerifyVehicle&driverId=${driverId}&vehicleId=${vehicleId}&isVerified=${isVerified}`, {
-                    method: 'POST',
-                    headers: { 'RequestVerificationToken': getAntiForgeryToken() }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    const cell = document.getElementById(`vehicle-verified-${vehicleId}`);
-                    cell.innerHTML = isVerified
-                        ? '<span class="status-badge status-active">✔</span>'
-                        : '<span class="status-badge status-inactive">✖</span>';
-                }
-                alert(data.message);
-            } catch (e) {
-                console.error(e);
-                alert("An error occurred. Please try again.");
-            }
-        }
-
-        function toggleVehicles(driverId) {
-            const row = document.getElementById(`vehicles-${driverId}`);
-            row.style.display = row.style.display === 'none' || row.style.display === '' ? 'table-row' : 'none';
-        }
-
-        // ================== ROUTE UI SCRIPTS ==================
-        function toggleRouteForm() {
-            const f = document.getElementById('route-form');
-            f.style.display = f.style.display === 'none' ? 'block' : 'none';
-            if (f.style.display === 'block') f.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function addSegment(start = '', end = '', dist = '', mins = '') {
-            const container = document.getElementById('segments-container');
-            const index = container.children.length;
-            const div = document.createElement('div');
-            div.className = 'segment-row';
-            div.innerHTML = `
-                <input name="NewRoute.Segments[${index}].StartPoint" placeholder="Start Point *" value="${start}" />
-                <input name="NewRoute.Segments[${index}].EndPoint" placeholder="End Point *" value="${end}" />
-                <input name="NewRoute.Segments[${index}].SegmentDistanceKm" placeholder="Distance (km)" value="${dist}" />
-                <input name="NewRoute.Segments[${index}].SegmentEstimatedMinutes" placeholder="Est. Minutes" value="${mins}" />
-                <button type="button" onclick="removeSegment(this)" style="background:var(--danger-500); color:white; border:none; padding:6px 8px; border-radius:6px;">✕</button>
-            `;
-            container.appendChild(div);
-        }
-
-        function removeSegment(btn) {
-            const row = btn.parentNode;
-            const container = document.getElementById('segments-container');
-            container.removeChild(row);
-
-            Array.from(container.children).forEach((child, idx) => {
-                child.querySelectorAll('input').forEach(input => {
-                    const name = input.getAttribute('name') || '';
-                    const newName = name.replace(/NewRoute\.Segments\[\d+\]/, `NewRoute.Segments[${idx}]`);
-                    input.setAttribute('name', newName);
-                });
-            });
-        }
-
-        function toggleRouteDetails(routeId) {
-            const el = document.getElementById(`route-details-${routeId}`);
-            el.style.display = el.style.display === 'none' ? 'block' : 'none';
-            if (el.style.display === 'block') el.scrollIntoView({ behavior: 'smooth' });
-        }
+        window.currentPage = @currentPage;
+        window.routesPerPage = @routesPerPage;
+        window.totalRoutes = @totalRoutes;
+        window.totalPages = @totalPages;
+        window.activeTab = 'routes';
     </script>
+    <script src="~/js/admin2.js"></script>
 }

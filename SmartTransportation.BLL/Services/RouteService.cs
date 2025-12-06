@@ -1,4 +1,5 @@
-﻿using SmartTransportation.BLL.DTOs.Location;
+﻿using Microsoft.EntityFrameworkCore;
+using SmartTransportation.BLL.DTOs.Location;
 using SmartTransportation.BLL.DTOs.Route;
 using SmartTransportation.BLL.DTOs.Weather;
 using SmartTransportation.BLL.Interfaces;
@@ -25,24 +26,9 @@ namespace SmartTransportation.BLL.Services
             _weatherGateway = weatherGateway;
         }
 
-        //public async Task<IEnumerable<RouteDetailsDTO>> GetAllRoutesAsync()
-        //{
-        //    var routes = await _unitOfWork.Routes.GetAllAsync();
-        //    return routes.Select(r => new RouteDetailsDTO
-        //    {
-        //        RouteId = r.RouteId,
-        //        RouteName = r.RouteName,
-        //        StartLocation = r.StartLocation,
-        //        EndLocation = r.EndLocation,
-        //        RouteType = r.RouteType,
-        //        IsCircular = r.IsCircular,
-        //        CreatedAt = r.CreatedAt
-        //    });
-        //}
         public async Task<IEnumerable<RouteDetailsDTO>> GetAllRoutesAsync()
         {
             var routes = await _unitOfWork.Routes.GetAllAsync();
-
             var allSegments = await _unitOfWork.RouteSegments.GetAllAsync();
             var allLocations = await _unitOfWork.MapLocations.GetAllAsync();
 
@@ -85,7 +71,6 @@ namespace SmartTransportation.BLL.Services
             });
         }
 
-
         public async Task<RouteDetailsDTO?> GetRouteDetailsByIdAsync(int routeId)
         {
             var route = await _unitOfWork.Routes.GetByIdAsync(routeId);
@@ -95,14 +80,11 @@ namespace SmartTransportation.BLL.Services
             var segmentIds = segments.Select(s => s.SegmentId).ToList();
             var locations = await _unitOfWork.MapLocations.FindAsync(l => segmentIds.Contains(l.SegmentId));
 
-            // Fetch simulated weather
             Weather latestWeather = null;
             var firstLoc = locations.FirstOrDefault();
             if (firstLoc != null)
             {
-                latestWeather = await _weatherGateway.FetchWeatherDataAsync(route.RouteId, firstLoc.Latitude.Value, firstLoc.Longitude.Value);
-
-                // Save weather to database so it gets a proper auto-incremented WeatherId
+                latestWeather = await _weatherGateway.FetchWeatherDataAsync(route.RouteId, firstLoc.Latitude ?? 0, firstLoc.Longitude ?? 0);
                 await _unitOfWork.Weathers.AddAsync(latestWeather);
                 await _unitOfWork.SaveAsync();
             }
@@ -139,26 +121,26 @@ namespace SmartTransportation.BLL.Services
                     GoogleAddress = l.GoogleAddress,
                     GooglePlaceId = l.GooglePlaceId
                 }).ToList(),
-                LatestWeather = latestWeather != null ? new WeatherDTO
-                {
-                    WeatherId = latestWeather.WeatherId, // Now auto-incremented
-                    RouteId = latestWeather.RouteId,
-                    WeatherDate = latestWeather.WeatherDate,
-                    Temperature = latestWeather.Temperature,
-                    Condition = latestWeather.Condition,
-                    WindSpeed = latestWeather.WindSpeed,
-                    Humidity = latestWeather.Humidity
-                } : null
+                LatestWeather = latestWeather != null
+                    ? new WeatherDTO
+                    {
+                        WeatherId = latestWeather.WeatherId,
+                        RouteId = latestWeather.RouteId,
+                        WeatherDate = latestWeather.WeatherDate,
+                        Temperature = latestWeather.Temperature,
+                        Condition = latestWeather.Condition,
+                        WindSpeed = latestWeather.WindSpeed,
+                        Humidity = latestWeather.Humidity
+                    }
+                    : null
             };
         }
 
         public async Task<RouteDetailsDTO> CreateRouteAsync(CreateRouteDTO dto)
         {
-            // 1️⃣ Calculate totals
             decimal totalDistance = dto.Segments.Sum(s => s.SegmentDistanceKm ?? 0);
             int totalMinutes = dto.Segments.Sum(s => s.SegmentEstimatedMinutes ?? 0);
 
-            // 2️⃣ Create route
             var route = new Route
             {
                 RouteName = dto.RouteName,
@@ -170,55 +152,74 @@ namespace SmartTransportation.BLL.Services
                 EstimatedTimeMinutes = totalMinutes,
                 CreatedAt = DateTime.UtcNow
             };
-            await _unitOfWork.Routes.AddAsync(route);
-            await _unitOfWork.SaveAsync(); // RouteId generated
 
-            var allMapLocations = new List<MapLocation>();
-            Weather latestWeather = null;
+            await _unitOfWork.Routes.AddAsync(route);
+            await _unitOfWork.SaveAsync();
+
+            var allSegments = new List<RouteSegment>();
+            var allLocations = new List<MapLocation>();
 
             foreach (var seg in dto.Segments)
             {
-                // 3️⃣ Create segment
                 var segment = new RouteSegment
                 {
                     RouteId = route.RouteId,
                     SegmentOrder = seg.SegmentOrder,
                     StartPoint = seg.StartPoint,
                     EndPoint = seg.EndPoint,
-                    DistanceKm = seg.SegmentDistanceKm,
-                    EstimatedMinutes = seg.SegmentEstimatedMinutes
+                    DistanceKm = seg.SegmentDistanceKm ?? 0,
+                    EstimatedMinutes = seg.SegmentEstimatedMinutes ?? 0
                 };
-                await _unitOfWork.RouteSegments.AddAsync(segment);
-                await _unitOfWork.SaveAsync(); // SegmentId generated
-
-                // 4️⃣ Fetch Map Locations from Google Maps
-                var routeCalc = await _googleMaps.FetchRouteDetailsAsync(
-                    seg.StartPoint, seg.EndPoint, route.RouteId, segment.SegmentId);
-
-                foreach (var loc in routeCalc.MapLocations)
-                {
-                    await _unitOfWork.MapLocations.AddAsync(loc);
-                }
-                await _unitOfWork.SaveAsync(); // LocationId generated
-                allMapLocations.AddRange(routeCalc.MapLocations);
-
-                // 5️⃣ Fetch weather for first segment only
-                if (latestWeather == null && routeCalc.MapLocations.Any())
-                {
-                    var firstLoc = routeCalc.MapLocations.First();
-                    latestWeather = await _weatherGateway.FetchWeatherDataAsync(
-                        route.RouteId, firstLoc.Latitude.Value, firstLoc.Longitude.Value);
-
-                    // Save weather to DB to get auto-incremented WeatherId
-                    await _unitOfWork.Weathers.AddAsync(latestWeather);
-                    await _unitOfWork.SaveAsync();
-                }
+                allSegments.Add(segment);
             }
 
-            // 6️⃣ Prepare segments DTO
-            var segmentsDTO = await _unitOfWork.RouteSegments.FindAsync(s => s.RouteId == route.RouteId);
+            await _unitOfWork.RouteSegments.AddRangeAsync(allSegments);
+            await _unitOfWork.SaveAsync();
 
-            // 7️⃣ Return final RouteDetailsDTO
+            // Fetch MapLocations for all segments
+            foreach (var seg in allSegments)
+            {
+                var maps = await _googleMaps.FetchRouteDetailsAsync(seg.StartPoint, seg.EndPoint, route.RouteId, seg.SegmentId);
+                allLocations.AddRange(maps.MapLocations);
+            }
+
+            await _unitOfWork.MapLocations.AddRangeAsync(allLocations);
+            await _unitOfWork.SaveAsync();
+
+            // Fetch weather for first location if exists
+            Weather latestWeather = null;
+            var firstLoc = allLocations.FirstOrDefault();
+            if (firstLoc != null)
+            {
+                latestWeather = await _weatherGateway.FetchWeatherDataAsync(route.RouteId, firstLoc.Latitude ?? 0, firstLoc.Longitude ?? 0);
+                await _unitOfWork.Weathers.AddAsync(latestWeather);
+                await _unitOfWork.SaveAsync();
+            }
+
+            // Return DTO
+            var segmentsDTO = allSegments.Select(s => new RouteSegmentDTO
+            {
+                SegmentId = s.SegmentId,
+                RouteId = s.RouteId,
+                SegmentOrder = s.SegmentOrder,
+                StartPoint = s.StartPoint,
+                EndPoint = s.EndPoint,
+                DistanceKm = s.DistanceKm,
+                EstimatedMinutes = s.EstimatedMinutes
+            }).ToList();
+
+            var mapLocationsDTO = allLocations.Select(l => new MapLocationDTO
+            {
+                LocationId = l.LocationId,
+                SegmentId = l.SegmentId,
+                Latitude = l.Latitude,
+                Longitude = l.Longitude,
+                Description = l.Description,
+                StopOrder = l.StopOrder,
+                GoogleAddress = l.GoogleAddress,
+                GooglePlaceId = l.GooglePlaceId
+            }).ToList();
+
             return new RouteDetailsDTO
             {
                 RouteId = route.RouteId,
@@ -230,27 +231,8 @@ namespace SmartTransportation.BLL.Services
                 TotalDistanceKm = route.TotalDistanceKm,
                 EstimatedTimeMinutes = route.EstimatedTimeMinutes,
                 CreatedAt = route.CreatedAt,
-                Segments = segmentsDTO.Select(s => new RouteSegmentDTO
-                {
-                    SegmentId = s.SegmentId,
-                    RouteId = s.RouteId,
-                    SegmentOrder = s.SegmentOrder,
-                    StartPoint = s.StartPoint,
-                    EndPoint = s.EndPoint,
-                    DistanceKm = s.DistanceKm,
-                    EstimatedMinutes = s.EstimatedMinutes
-                }).ToList(),
-                MapLocations = allMapLocations.Select(l => new MapLocationDTO
-                {
-                    LocationId = l.LocationId, // now guaranteed non-zero
-                    SegmentId = l.SegmentId,
-                    Latitude = l.Latitude,
-                    Longitude = l.Longitude,
-                    Description = l.Description,
-                    StopOrder = l.StopOrder,
-                    GoogleAddress = l.GoogleAddress,
-                    GooglePlaceId = l.GooglePlaceId
-                }).ToList(),
+                Segments = segmentsDTO,
+                MapLocations = mapLocationsDTO,
                 LatestWeather = latestWeather != null ? new WeatherDTO
                 {
                     WeatherId = latestWeather.WeatherId,
@@ -266,12 +248,109 @@ namespace SmartTransportation.BLL.Services
 
 
 
+        public async Task<RouteDetailsDTO?> UpdateRouteAsync(int routeId, UpdateRouteDTO dto)
+        {
+            var route = await _unitOfWork.Routes.GetByIdAsync(routeId);
+            if (route == null) return null;
+
+            route.RouteName = dto.RouteName;
+            route.StartLocation = dto.StartLocation;
+            route.EndLocation = dto.EndLocation;
+            route.RouteType = dto.RouteType;
+            route.IsCircular = dto.IsCircular;
+
+            var oldSegments = await _unitOfWork.RouteSegments.FindAsync(s => s.RouteId == routeId);
+
+            foreach (var seg in oldSegments)
+            {
+                var locs = await _unitOfWork.MapLocations.FindAsync(l => l.SegmentId == seg.SegmentId);
+                _unitOfWork.MapLocations.RemoveRange(locs);
+            }
+
+            _unitOfWork.RouteSegments.RemoveRange(oldSegments);
+
+            decimal totalDistance = 0;
+            int totalMinutes = 0;
+
+            foreach (var s in dto.Segments)
+            {
+                var segment = new RouteSegment
+                {
+                    RouteId = route.RouteId,
+                    SegmentOrder = s.SegmentOrder,
+                    StartPoint = s.StartPoint,
+                    EndPoint = s.EndPoint,
+                    DistanceKm = s.SegmentDistanceKm,
+                    EstimatedMinutes = s.SegmentEstimatedMinutes
+                };
+
+                await _unitOfWork.RouteSegments.AddAsync(segment);
+                await _unitOfWork.SaveAsync();
+
+                totalDistance += segment.DistanceKm ?? 0;
+                totalMinutes += segment.EstimatedMinutes ?? 0;
+
+                var maps = await _googleMaps.FetchRouteDetailsAsync(segment.StartPoint, segment.EndPoint, route.RouteId, segment.SegmentId);
+
+                foreach (var loc in maps.MapLocations)
+                {
+                    await _unitOfWork.MapLocations.AddAsync(loc);
+                }
+
+                await _unitOfWork.SaveAsync();
+            }
+
+            route.TotalDistanceKm = totalDistance;
+            route.EstimatedTimeMinutes = totalMinutes;
+
+            _unitOfWork.Routes.Update(route);
+            await _unitOfWork.SaveAsync();
+
+            return await GetRouteDetailsByIdAsync(routeId);
+        }
+
+
+        public async Task<bool> DeleteRouteAsync(int routeId)
+        {
+            var route = await _unitOfWork.Routes.GetByIdAsync(routeId);
+            if (route == null) return false;
+
+            var segments = await _unitOfWork.RouteSegments.FindAsync(s => s.RouteId == routeId);
+
+            foreach (var seg in segments)
+            {
+                var locs = await _unitOfWork.MapLocations.FindAsync(l => l.SegmentId == seg.SegmentId);
+                _unitOfWork.MapLocations.RemoveRange(locs);
+            }
+
+            _unitOfWork.RouteSegments.RemoveRange(segments);
+
+            var weather = await _unitOfWork.Weathers.FindAsync(w => w.RouteId == routeId);
+            _unitOfWork.Weathers.RemoveRange(weather);
+
+            _unitOfWork.Routes.Remove(route);
+            await _unitOfWork.SaveAsync();
+
+            return true;
+        }
+        public async Task<bool> RouteExistsAsync(string start, string end)
+        {
+            return await _unitOfWork.Routes
+                .GetQueryable()
+                .AnyAsync(r => r.StartLocation == start && r.EndLocation == end);
+        }
+
+
         public async Task<PagedResult<RouteDetailsDTO>> GetPagedRoutesAsync(string? search, int pageNumber, int pageSize)
         {
             Expression<Func<Route, bool>> filter = r =>
                 string.IsNullOrEmpty(search) || r.RouteName.Contains(search);
 
-            var pagedRoutes = await _unitOfWork.Routes.GetPagedAsync(filter, pageNumber, pageSize, q => q.OrderBy(r => r.RouteName));
+            var pagedRoutes = await _unitOfWork.Routes.GetPagedAsync(
+                filter,
+                pageNumber,
+                pageSize,
+                q => q.OrderBy(r => r.RouteName));
 
             return new PagedResult<RouteDetailsDTO>
             {

@@ -16,7 +16,10 @@ namespace SmartTransportation.DAL.Repositories.Generic
         void Update(T entity);
         void Remove(T entity);
 
-        // ⭐ Save changes
+        // NEW — add range operations
+        void RemoveRange(IEnumerable<T> entities);
+        Task AddRangeAsync(IEnumerable<T> entities);
+
         Task SaveAsync();
 
         // ⭐ Paged result
